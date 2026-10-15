@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Archive, BarChart3, BookOpen, Boxes, CalendarDays, Check, ChevronRight, ClipboardList, Cookie, CreditCard, DollarSign, Download, FileText, LayoutDashboard, Menu, Moon, PackagePlus, Plus, Receipt, RefreshCw, Search, Settings, ShoppingBag, Sun, Tags, TrendingUp, Upload, Users, WalletCards, X } from "lucide-react";
+import { Archive, BarChart3, BookOpen, Boxes, CalendarDays, Check, ChevronRight, ClipboardList, Cookie, CreditCard, DollarSign, Download, Feather as FeatherIcon, FileText, LayoutDashboard, Menu, Moon, PackagePlus, Plus, Receipt, RefreshCw, Search, Settings, ShoppingBag, Sun, Tags, TrendingUp, Upload, Users, WalletCards, X } from "lucide-react";
 
 type Data = { user:any; settings:any; categories:any[]; products:any[]; ingredients:any[]; recipes:any[]; recipeIngredients:any[]; taxProfiles:any[]; taxComponents:any[]; sales:any[]; saleItems:any[]; appliedTaxes:any[]; inventory:any[]; expenseCategories:any[]; expenses:any[]; events:any[]; eventInventory:any[]; audits:any[] };
 type Section = "dashboard"|"sale"|"history"|"products"|"recipes"|"inventory"|"expenses"|"events"|"taxes"|"reports"|"settings";
@@ -29,7 +29,7 @@ export default function BakeryApp({userName,signOutPath}:{userName:string;signOu
   const title=NAV.find(x=>x.id===section)?.label||"Dashboard";
   return <div className="app-shell">
     <aside className={`sidebar ${mobile?"open":""}`}>
-      <div className="brand"><div className="brand-mark">F<span>&</span>F</div><div><strong>{data.settings?.bakeryName||"Feather & Flour"}</strong><small>Bakery studio</small></div><button className="icon-btn mobile-close" onClick={()=>setMobile(false)}><X size={18}/></button></div>
+      <div className="brand"><div className="brand-mark" aria-label="Feather and Flour logo"><FeatherIcon size={23} strokeWidth={1.6}/></div><div className="brand-copy"><strong>{data.settings?.bakeryName||"Feather & Flour Bakery"}</strong><small>SMALL-BATCH BAKERY · MOBILE, AL</small></div><button className="icon-btn mobile-close" onClick={()=>setMobile(false)}><X size={18}/></button></div>
       <nav>{NAV.map(({id,label,icon:Icon})=><button key={id} className={section===id?"active":""} onClick={()=>{setSection(id);setMobile(false)}}><Icon size={18}/><span>{label}</span>{section===id&&<ChevronRight size={15}/>}</button>)}</nav>
       <div className="sidebar-foot"><div className="avatar">{userName.slice(0,1).toUpperCase()}</div><div><strong>{userName}</strong><a href={signOutPath} target="_top">Sign out</a></div></div>
     </aside>
