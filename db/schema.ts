@@ -81,6 +81,11 @@ export const saleItems = sqliteTable("sale_items", {
   taxable: integer("taxable", { mode: "boolean" }).notNull(), lineTotalCents: integer("line_total_cents").notNull(),
 }, (t) => [index("sale_items_sale").on(t.saleId), index("sale_items_product").on(t.productId)]);
 
+export const payments = sqliteTable("payments", {
+  id: text("id").primaryKey(), saleId: text("sale_id").notNull(), amountCents: integer("amount_cents").notNull(),
+  method: text("method").notNull(), reference: text("reference").notNull().default(""), createdAt: text("created_at").notNull(),
+}, (t) => [index("payments_sale").on(t.saleId)]);
+
 export const appliedSaleTaxes = sqliteTable("applied_sale_taxes", {
   id: text("id").primaryKey(), saleId: text("sale_id").notNull(), componentName: text("component_name").notNull(), componentKind: text("component_kind").notNull(),
   rateBps: integer("rate_bps").notNull(), taxableCents: integer("taxable_cents").notNull(), taxCents: integer("tax_cents").notNull(),

@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         const rowId = body.id || id();
         if (body.id) await db.update(s.productCategories).set({ name, updatedAt: stamp }).where(and(eq(s.productCategories.id, rowId), eq(s.productCategories.userId, user.userId)));
         else await db.insert(s.productCategories).values({ id: rowId, userId: user.userId, name, createdAt: stamp, updatedAt: stamp });
-        return ok();
+        return Response.json({ ok: true, id: rowId });
       }
       case "saveProduct": {
         const name = text(body.name, 120); if (!name) throw new Error("Product name is required.");
@@ -155,7 +155,12 @@ export async function POST(request: Request) {
         const name = text(body.name, 120); if (!name) throw new Error("Tax profile name is required.");
         const profileId = body.id || id(); const profileValues = { name, location: text(body.location, 200), taxInclusive: !!body.taxInclusive, active: body.active !== false, updatedAt: stamp };
         const queries: any[] = [];
-        if (body.id) { queries.push(db.update(s.taxProfiles).set(profileValues).where(and(eq(s.taxProfiles.id, profileId), eq(s.taxProfiles.userId, user.userId)))); queries.push(db.delete(s.taxComponents).where(eq(s.taxComponents.profileId, profileId))); }
+        if (body.id) {
+          const changeDate = body.components?.[0]?.effectiveFrom || stamp.slice(0, 10);
+          const close = new Date(`${changeDate}T12:00:00Z`); close.setUTCDate(close.getUTCDate() - 1);
+          queries.push(db.update(s.taxProfiles).set(profileValues).where(and(eq(s.taxProfiles.id, profileId), eq(s.taxProfiles.userId, user.userId))));
+          queries.push(db.update(s.taxComponents).set({ active: false, effectiveTo: close.toISOString().slice(0, 10), updatedAt: stamp }).where(and(eq(s.taxComponents.profileId, profileId), eq(s.taxComponents.active, true))));
+        }
         else queries.push(db.insert(s.taxProfiles).values({ id: profileId, userId: user.userId, createdAt: stamp, ...profileValues }));
         for (const c of (body.components || [])) {
           const rateBps = Math.max(0, Math.round(Number(c.ratePercent) * 100));
@@ -165,7 +170,7 @@ export async function POST(request: Request) {
       }
       case "saveExpenseCategory": {
         const name = text(body.name, 100); if (!name) throw new Error("Category name is required.");
-        await db.insert(s.expenseCategories).values({ id: id(), userId: user.userId, name, createdAt: stamp, updatedAt: stamp }); return ok();
+        const rowId = id(); await db.insert(s.expenseCategories).values({ id: rowId, userId: user.userId, name, createdAt: stamp, updatedAt: stamp }); return Response.json({ ok: true, id: rowId });
       }
       case "saveExpense": {
         const amountCents = cents(body.amountCents); if (!amountCents) throw new Error("Expense amount must be greater than zero.");
@@ -227,6 +232,7 @@ async function recordSale(db: ReturnType<typeof getDb>, userId: string, body: Re
   const taxRows = calculated.componentTaxes.map((row, i) => ({ component: components[i], amount: row.taxCents }));
   const saleId = id(); const txNumber = `FF-${stamp.slice(0, 10).replaceAll("-", "")}-${saleId.slice(0, 4).toUpperCase()}`;
   const queries: any[] = [db.insert(s.sales).values({ id: saleId, userId, transactionNumber: txNumber, soldAt: body.soldAt || stamp, subtotalCents: subtotal, discountCents: discount, taxableCents: taxable, taxCents: totalTax, totalCents, paymentMethod: text(body.paymentMethod, 40) || "cash", location: text(body.location, 200), eventId: body.eventId || null, taxProfileId: profile?.id || null, taxInclusive, customerName: text(body.customerName, 120), notes: text(body.notes, 1000), createdAt: stamp, updatedAt: stamp })];
+  queries.push(db.insert(s.payments).values({ id: id(), saleId, amountCents: totalCents, method: text(body.paymentMethod, 40) || "cash", reference: text(body.paymentReference, 120), createdAt: stamp }));
   for (const x of items) {
     queries.push(db.insert(s.saleItems).values({ id: id(), saleId, productId: x.product.id, productName: x.product.name, sku: x.product.sku, quantity: x.quantity, unitPriceCents: x.product.priceCents, unitCostCents: x.product.costCents, taxable: x.product.taxable, lineTotalCents: x.product.priceCents * x.quantity }));
     queries.push(db.update(s.products).set({ stockQty: sql`${s.products.stockQty} - ${x.quantity}`, updatedAt: stamp }).where(eq(s.products.id, x.product.id)));
