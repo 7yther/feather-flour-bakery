@@ -7,7 +7,7 @@ import { getDb } from "@/db";
 import * as s from "@/db/schema";
 
 const COOKIE_NAME = "ff_session";
-const ITERATIONS = 210_000;
+const ITERATIONS = 100_000;
 const SESSION_DAYS = 30;
 
 export type AppUser = { id:string; username:string; displayName:string; role:"owner"|"staff" };

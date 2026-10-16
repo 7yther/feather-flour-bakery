@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1792104306447,
+      "tag": "0000_gifted_mockingbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792104686940,
+      "tag": "0001_flashy_barracuda",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792120464124,
+      "tag": "0002_worried_sumo",
+      "breakpoints": true
+    }
+  ]
+}

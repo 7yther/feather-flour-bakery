@@ -1,0 +1,1 @@
+import{n as e}from"./app-auth-CFiT_r9_.js";async function t(t){return await e(),Response.redirect(new URL(`/`,t.url),303)}async function n(t){return await e(),Response.redirect(new URL(`/`,t.url),303)}export{t as GET,n as POST};
