@@ -48,6 +48,39 @@ export const products = sqliteTable("products", {
   taxable: integer("taxable", { mode: "boolean" }).notNull().default(true), active: integer("active", { mode: "boolean" }).notNull().default(true), ...timestamps,
 }, (t) => [uniqueIndex("products_user_sku").on(t.userId, t.sku), index("products_user_active").on(t.userId, t.active)]);
 
+export const customOrders = sqliteTable("custom_orders", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  orderNumber: text("order_number").notNull(),
+  status: text("status", { enum: ["new", "confirmed", "fulfilled", "cancelled"] }).notNull().default("new"),
+  customerName: text("customer_name").notNull(),
+  customerEmail: text("customer_email").notNull().default(""),
+  customerPhone: text("customer_phone").notNull(),
+  address1: text("address_1").notNull(),
+  address2: text("address_2").notNull().default(""),
+  city: text("city").notNull(),
+  state: text("state").notNull(),
+  postalCode: text("postal_code").notNull(),
+  requestedAt: text("requested_at").notNull(),
+  occasion: text("occasion").notNull().default(""),
+  theme: text("theme").notNull().default(""),
+  colors: text("colors").notNull().default(""),
+  personalization: text("personalization").notNull().default(""),
+  allergyNotes: text("allergy_notes").notNull().default(""),
+  notes: text("notes").notNull().default(""),
+  emailStatus: text("email_status", { enum: ["sent", "pending", "failed"] }).notNull().default("pending"),
+  ...timestamps,
+}, (t) => [uniqueIndex("custom_orders_number").on(t.orderNumber), index("custom_orders_user_date").on(t.userId, t.requestedAt)]);
+
+export const customOrderItems = sqliteTable("custom_order_items", {
+  id: text("id").primaryKey(),
+  orderId: text("order_id").notNull(),
+  offeringId: text("offering_id").notNull(),
+  offeringName: text("offering_name").notNull(),
+  quantity: integer("quantity").notNull(),
+  unitPriceCents: integer("unit_price_cents"),
+}, (t) => [index("custom_order_items_order").on(t.orderId)]);
+
 export const ingredients = sqliteTable("ingredients", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), name: text("name").notNull(), purchaseCostCents: integer("purchase_cost_cents").notNull(),
   purchaseQuantityMicros: integer("purchase_quantity_micros").notNull(), unit: text("unit").notNull(), vendor: text("vendor").notNull().default(""), ...timestamps,

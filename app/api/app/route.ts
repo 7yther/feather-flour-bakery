@@ -48,7 +48,7 @@ export async function GET() {
   const { db, user, account } = ctx;
   await bootstrap(user.userId);
   const uid = user.userId;
-  const [appSettings, categories, products, ingredients, recipes, recipeIngredients, taxProfiles, allTaxComponents, sales, allSaleItems, allTaxes, inventory, expenseCategories, expenses, events, eventInventory, audits] = await Promise.all([
+  const [appSettings, categories, products, ingredients, recipes, recipeIngredients, taxProfiles, allTaxComponents, sales, allSaleItems, allTaxes, inventory, expenseCategories, expenses, events, eventInventory, audits, customOrders, allCustomOrderItems] = await Promise.all([
     db.select().from(s.settings).where(eq(s.settings.userId, uid)).limit(1),
     db.select().from(s.productCategories).where(eq(s.productCategories.userId, uid)).orderBy(asc(s.productCategories.name)),
     db.select().from(s.products).where(eq(s.products.userId, uid)).orderBy(desc(s.products.active), asc(s.products.name)),
@@ -66,11 +66,14 @@ export async function GET() {
     db.select().from(s.vendorEvents).where(eq(s.vendorEvents.userId, uid)).orderBy(desc(s.vendorEvents.eventDate)),
     db.select().from(s.eventInventory),
     db.select().from(s.auditLogs).where(eq(s.auditLogs.userId, uid)).orderBy(desc(s.auditLogs.createdAt)).limit(100),
+    db.select().from(s.customOrders).where(eq(s.customOrders.userId, uid)).orderBy(desc(s.customOrders.createdAt)).limit(500),
+    db.select().from(s.customOrderItems),
   ]);
   const recipeIds = new Set(recipes.map((r) => r.id));
   const profileIds = new Set(taxProfiles.map((p) => p.id));
   const saleIds = new Set(sales.map((x) => x.id));
   const eventIds = new Set(events.map((x) => x.id));
+  const customOrderIds = new Set(customOrders.map((x) => x.id));
   const teamUsers=account.role==="owner"?await db.select({id:s.appUsers.id,username:s.appUsers.username,displayName:s.appUsers.displayName,role:s.appUsers.role,active:s.appUsers.active,createdAt:s.appUsers.createdAt}).from(s.appUsers).orderBy(asc(s.appUsers.username)):[];
   return Response.json({
     user, settings: appSettings[0], categories, products, ingredients, recipes,
@@ -78,6 +81,7 @@ export async function GET() {
     taxComponents: allTaxComponents.filter((x) => profileIds.has(x.profileId)), sales,
     saleItems: allSaleItems.filter((x) => saleIds.has(x.saleId)), appliedTaxes: allTaxes.filter((x) => saleIds.has(x.saleId)),
     inventory, expenseCategories, expenses, events, eventInventory: eventInventory.filter((x) => eventIds.has(x.eventId)), audits, teamUsers,
+    customOrders, customOrderItems: allCustomOrderItems.filter((x) => customOrderIds.has(x.orderId)),
   });
 }
 
@@ -130,6 +134,17 @@ export async function POST(request: Request) {
         const row=(await db.select().from(s.appUsers).where(eq(s.appUsers.id,account.id)).limit(1))[0];
         if(!row||!await verifyPassword(current,row.passwordHash))throw new Error("Current password is incorrect.");
         await db.update(s.appUsers).set({passwordHash:await hashPassword(password),updatedAt:stamp}).where(eq(s.appUsers.id,account.id));
+        return ok();
+      }
+      case "setCustomOrderStatus": {
+        const status = text(body.status, 20);
+        if (!["new", "confirmed", "fulfilled", "cancelled"].includes(status)) throw new Error("Choose a valid order status.");
+        const orderId = text(body.id, 80);
+        const order = await db.select({ id: s.customOrders.id, orderNumber: s.customOrders.orderNumber }).from(s.customOrders)
+          .where(and(eq(s.customOrders.id, orderId), eq(s.customOrders.userId, user.userId))).limit(1);
+        if (!order[0]) throw new Error("Custom order not found.");
+        await db.update(s.customOrders).set({ status: status as "new" | "confirmed" | "fulfilled" | "cancelled", updatedAt: stamp }).where(eq(s.customOrders.id, orderId));
+        await log(db, user.userId, "update", "custom_order", orderId, { orderNumber: order[0].orderNumber, status });
         return ok();
       }
       case "saveCategory": {
