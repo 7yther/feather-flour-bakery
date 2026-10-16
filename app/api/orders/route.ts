@@ -82,7 +82,12 @@ export async function POST(request: Request) {
     try {
       const response = await fetch(`https://formsubmit.co/ajax/${notificationEmail}`, {
         method: "POST",
-        headers: { "content-type": "application/json", accept: "application/json" },
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json",
+          origin: "https://featherandflourbakery.com",
+          referer: "https://featherandflourbakery.com/",
+        },
         body: JSON.stringify({
           _subject: `New Feather & Flour cookie order ${orderNumber}`,
           _template: "table",
