@@ -10,3 +10,4 @@
 @media(max-width:390px){.brand>span:last-child{display:none}.cookieScene{height:380px}.cookieTwo{width:165px;height:165px}.cookieOne{width:135px;height:135px}.cookieThree{width:120px;height:120px}.offerContent>div{display:block}.offerContent button{margin-top:10px}.selectionList>div{display:block}.quantity{margin-top:10px;width:124px}}
 .offerCard:last-child:nth-child(3n+1){grid-column:2}
 @media(max-width:980px){.offerCard:last-child:nth-child(3n+1){grid-column:auto}}
+.offerVisual.hasPhoto:before,.offerVisual.hasPhoto:after{display:none}.offerPhoto{width:100%;height:100%;object-fit:cover;display:block;transition:transform .35s ease}.offerCard:hover .offerPhoto{transform:scale(1.035)}.offerVisual.hasPhoto>small{color:#fff;background:rgba(55,41,36,.62);padding:6px 8px;border-radius:999px;text-shadow:0 1px 2px rgba(0,0,0,.25)}

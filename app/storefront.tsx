@@ -25,7 +25,7 @@ export default function Storefront({ bakery, offerings }: Props) {
   const [earliest] = useState(() => localDateTime(new Date(Date.now() + 48 * 60 * 60 * 1000)));
   const totalCookies = Object.values(quantities).reduce((sum, value) => sum + value, 0);
   const estimate = offerings.reduce((sum, item) => sum + (item.priceCents ?? 0) * (quantities[item.id] ?? 0), 0);
-  const hasPricedItems = offerings.some((item) => item.priceCents != null);
+  const hasPricedItems = offerings.some((item) => (item.priceCents ?? 0) > 0);
 
   const setQuantity = (id: string, value: number) => setQuantities((current) => ({ ...current, [id]: Math.max(0, Math.min(500, Math.floor(value || 0))) }));
   const choose = (id: string) => {
@@ -77,10 +77,10 @@ export default function Storefront({ bakery, offerings }: Props) {
     <section className={styles.hero} id="top">
       <div className={styles.heroCopy}>
         <p className={styles.kicker}><Sparkles size={15} /> Fresh cookies, baked for your order</p>
-        <h1>Seven flavors.<br/><em>One seriously good cookie box.</em></h1>
+        <h1>{offerings.length} flavors.<br/><em>One seriously good cookie box.</em></h1>
         <p className={styles.heroText}>Choose your favorite flavors and tell us how many you need. Every order is baked fresh by Feather & Flour in Mobile, Alabama.</p>
         <div className={styles.heroActions}><a href="#order" className={styles.primary}>Build your cookie order <ArrowRight size={18} /></a><span><Clock3 size={18} /> 48-hour minimum notice</span></div>
-        <div className={styles.heroProof}><span><Check /> Baked to order</span><span><Check /> Seven cookie flavors</span><span><Check /> Personal service</span></div>
+        <div className={styles.heroProof}><span><Check /> Baked to order</span><span><Check /> {offerings.length} cookie flavors</span><span><Check /> Personal service</span></div>
       </div>
       <div className={styles.cookieScene} aria-label="Decorated cookie assortment">
         <div className={`${styles.cookieArt} ${styles.cookieOne}`}><span>yum</span></div>
@@ -96,8 +96,8 @@ export default function Storefront({ bakery, offerings }: Props) {
       <p className={styles.sectionKicker}>Pick your flavors</p>
       <div className={styles.sectionHeading}><h2>There’s a cookie for every craving.</h2><p>Mix and match the flavors you want, enter the quantity for each one, and send your order request. We’ll contact you to confirm availability, price, and payment.</p></div>
       <div className={styles.offerGrid}>{offerings.map((item, index) => <article className={styles.offerCard} key={item.id}>
-        <div className={`${styles.offerVisual} ${styles[item.accent || "rose"]}`}><span className={styles.miniCookie}>{index % 3 === 0 ? "✦" : index % 3 === 1 ? "F&F" : "♡"}</span><small>0{index + 1}</small></div>
-        <div className={styles.offerContent}><h3>{item.name}</h3><p>{item.description}</p><div><span>{item.priceCents != null ? `${money(item.priceCents)} each` : "Price confirmed after review"}</span><button type="button" onClick={() => choose(item.id)}>Choose this flavor <ArrowRight size={15}/></button></div></div>
+        <div className={`${styles.offerVisual} ${item.photoUrl ? styles.hasPhoto : styles[item.accent || "rose"]}`}>{item.photoUrl ? <img className={styles.offerPhoto} src={item.photoUrl} alt={`${item.name} cookie`} /> : <span className={styles.miniCookie}>{index % 3 === 0 ? "✦" : index % 3 === 1 ? "F&F" : "♡"}</span>}<small>0{index + 1}</small></div>
+        <div className={styles.offerContent}><h3>{item.name}</h3><p>{item.description}</p><div><span>{(item.priceCents ?? 0) > 0 ? `${money(item.priceCents!)} each` : "Price confirmed after review"}</span><button type="button" onClick={() => choose(item.id)}>Choose this flavor <ArrowRight size={15}/></button></div></div>
       </article>)}</div>
     </section>
 
@@ -115,7 +115,7 @@ export default function Storefront({ bakery, offerings }: Props) {
       <div className={styles.formCard}>
         {orderNumber ? <div className={styles.success}><span><Check size={34}/></span><p className={styles.sectionKicker}>Request received</p><h2>Thank you!</h2><p>Your order request <strong>{orderNumber}</strong> has been saved. Feather & Flour will contact you to confirm the details, price, and payment.</p><button className={styles.primary} onClick={() => { setOrderNumber(""); setQuantities({}); }}>Start another order</button></div> :
         <form onSubmit={submit}>
-          <fieldset><legend><span>1</span>Your cookie selection</legend><div className={styles.selectionList}>{offerings.map((item) => <div key={item.id}><div><strong>{item.name}</strong><small>{item.priceCents != null ? `${money(item.priceCents)} each` : "Final quote after review"}</small></div><div className={styles.quantity}><button type="button" aria-label={`Remove ${item.name}`} onClick={() => setQuantity(item.id, (quantities[item.id] || 0) - 6)}><Minus/></button><input aria-label={`${item.name} quantity`} type="number" min="0" max="500" value={quantities[item.id] || 0} onChange={(event) => setQuantity(item.id, Number(event.target.value))}/><button type="button" aria-label={`Add ${item.name}`} onClick={() => setQuantity(item.id, (quantities[item.id] || 0) + 6)}><Plus/></button></div></div>)}</div><div className={styles.selectionTotal}><span>{totalCookies} cookie{totalCookies === 1 ? "" : "s"} selected</span>{hasPricedItems && estimate > 0 ? <strong>Estimated {money(estimate)}</strong> : <strong>Pricing confirmed after review</strong>}</div></fieldset>
+          <fieldset><legend><span>1</span>Your cookie selection</legend><div className={styles.selectionList}>{offerings.map((item) => <div key={item.id}><div><strong>{item.name}</strong><small>{(item.priceCents ?? 0) > 0 ? `${money(item.priceCents!)} each` : "Final quote after review"}</small></div><div className={styles.quantity}><button type="button" aria-label={`Remove ${item.name}`} onClick={() => setQuantity(item.id, (quantities[item.id] || 0) - 6)}><Minus/></button><input aria-label={`${item.name} quantity`} type="number" min="0" max="500" value={quantities[item.id] || 0} onChange={(event) => setQuantity(item.id, Number(event.target.value))}/><button type="button" aria-label={`Add ${item.name}`} onClick={() => setQuantity(item.id, (quantities[item.id] || 0) + 6)}><Plus/></button></div></div>)}</div><div className={styles.selectionTotal}><span>{totalCookies} cookie{totalCookies === 1 ? "" : "s"} selected</span>{hasPricedItems && estimate > 0 ? <strong>Estimated {money(estimate)}</strong> : <strong>Pricing confirmed after review</strong>}</div></fieldset>
 
           <fieldset><legend><span>2</span>Delivery & contact</legend><div className={styles.gridTwo}><label>Full name *<input name="customerName" autoComplete="name" required /></label><label>Phone number *<input name="customerPhone" type="tel" autoComplete="tel" required placeholder="(251) 555-0123" /></label></div><label>Email <input name="customerEmail" type="email" autoComplete="email" placeholder="Optional — for written confirmation" /></label><label>Delivery address *<input name="address1" autoComplete="address-line1" required placeholder="Street address" /></label><label>Apartment, suite, or unit<input name="address2" autoComplete="address-line2" /></label><div className={styles.addressGrid}><label>City *<input name="city" autoComplete="address-level2" required /></label><label>State *<input name="state" autoComplete="address-level1" required defaultValue="AL" /></label><label>ZIP code *<input name="postalCode" autoComplete="postal-code" required /></label></div><label>Requested delivery date & time *<input name="requestedAt" type="datetime-local" min={earliest} defaultValue={earliest} required /></label><label>Allergy concerns<textarea name="allergyNotes" rows={2} placeholder="Tell us about any allergy concerns. We will confirm what we can safely accommodate." /></label><label>Order notes<textarea name="notes" rows={3} placeholder="Delivery instructions, special requests, or questions." /></label><label className={styles.honeypot} aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" /></label></fieldset>
           {error && <p className={styles.formError}>{error}</p>}

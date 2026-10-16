@@ -1,4 +1,7 @@
 import { env } from "cloudflare:workers";
+import { and, eq } from "drizzle-orm";
+import { getDb } from "@/db";
+import * as s from "@/db/schema";
 import { getAppUser, getWorkspaceId } from "@/lib/app-auth";
 
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
@@ -20,13 +23,18 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const user = await getAppUser();
-  if (!user) return new Response("Sign in required", { status: 401 });
   const workspaceId = getWorkspaceId();
   const key = new URL(request.url).searchParams.get("key") || "";
   if (!key.startsWith(`${workspaceId}/`) || !env.BUCKET) return new Response("Not found", { status: 404 });
+  const user = await getAppUser();
+  if (!user) {
+    const publicProduct = await getDb().select({ id: s.products.id }).from(s.products).where(and(
+      eq(s.products.userId, workspaceId), eq(s.products.active, true), eq(s.products.photoKey, key),
+    )).limit(1);
+    if (!publicProduct[0]) return new Response("Not found", { status: 404 });
+  }
   const object = await env.BUCKET.get(key);
   if (!object) return new Response("Not found", { status: 404 });
-  const headers = new Headers(); object.writeHttpMetadata(headers); headers.set("etag", object.httpEtag); headers.set("cache-control", "private, max-age=3600");
+  const headers = new Headers(); object.writeHttpMetadata(headers); headers.set("etag", object.httpEtag); headers.set("cache-control", user ? "private, max-age=3600" : "public, max-age=3600");
   return new Response(object.body, { headers });
 }
