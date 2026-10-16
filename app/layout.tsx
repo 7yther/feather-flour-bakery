@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Feather & Flour Bakery",
-  description: "Custom-made cookies for birthdays, weddings, showers, business events, and every sweet celebration in Mobile, Alabama.",
+  description: "Fresh cookies in seven delicious flavors, baked to order by Feather & Flour Bakery in Mobile, Alabama.",
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

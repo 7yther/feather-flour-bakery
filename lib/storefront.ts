@@ -1,21 +1,45 @@
 export const DEFAULT_COOKIE_OFFERINGS = [
   {
-    id: "custom-decorated",
-    name: "Custom decorated cookies",
-    description: "Hand-decorated sugar cookies matched to your colors, theme, and celebration.",
+    id: "chocolate-chip",
+    name: "Chocolate Chip",
+    description: "A classic bakery favorite loaded with chocolate chips and baked fresh for your order.",
     accent: "rose",
   },
   {
-    id: "logo-cookies",
-    name: "Logo & business cookies",
-    description: "Branded cookie sets for openings, client gifts, launches, and team events.",
+    id: "fruity-cookies",
+    name: "Fruity Cookies",
+    description: "A bright, colorful cookie with a fun fruity flavor in every bite.",
     accent: "sage",
   },
   {
-    id: "personalized-favors",
-    name: "Personalized cookie favors",
-    description: "Individually detailed favors for weddings, showers, birthdays, and milestones.",
+    id: "smores-cookies",
+    name: "S’mores Cookies",
+    description: "A campfire-inspired cookie with chocolate, marshmallow, and graham-style flavor.",
     accent: "gold",
+  },
+  {
+    id: "sweet-salty-oatmeal",
+    name: "Sweet & Salty Oatmeal",
+    description: "A cozy oatmeal cookie with a balanced sweet-and-salty finish.",
+    accent: "rose",
+  },
+  {
+    id: "biscoff",
+    name: "Biscoff",
+    description: "A rich cookie inspired by the warm, caramelized flavor of Biscoff.",
+    accent: "sage",
+  },
+  {
+    id: "cookies-n-cream",
+    name: "Cookies N Cream",
+    description: "A creamy chocolate-cookie combination packed into a bakery-style cookie.",
+    accent: "gold",
+  },
+  {
+    id: "chocolate-pebbles",
+    name: "Chocolate Pebbles",
+    description: "A chocolate-forward cookie with a playful crunchy cereal-inspired finish.",
+    accent: "rose",
   },
 ] as const;
 

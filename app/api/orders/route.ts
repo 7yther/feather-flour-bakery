@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     offeringId: clean(item.offeringId, 100),
     quantity: Math.max(0, Math.min(500, Math.floor(Number(item.quantity) || 0))),
   })).filter((item) => item.offeringId && item.quantity > 0);
-  if (!normalized.length) return Response.json({ error: "Choose at least one cookie style and quantity." }, { status: 400 });
+  if (!normalized.length) return Response.json({ error: "Choose at least one cookie flavor and quantity." }, { status: 400 });
   if (normalized.reduce((sum, item) => sum + item.quantity, 0) > 500) {
     return Response.json({ error: "For orders over 500 cookies, please contact the bakery directly." }, { status: 400 });
   }
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
           referer: "https://featherandflourbakery.com/",
         },
         body: JSON.stringify({
-          _subject: `New Feather & Flour cookie order ${orderNumber}`,
+          _subject: `New Feather & Flour online order ${orderNumber}`,
           _template: "table",
           "Order number": orderNumber,
           "Customer name": customerName,
@@ -98,12 +98,8 @@ export async function POST(request: Request) {
           "Delivery address": [address1, address2, `${city}, ${state} ${postalCode}`].filter(Boolean).join(", "),
           "Requested date and time": requestedAt.toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "full", timeStyle: "short" }),
           "Cookie selections": items.map((item) => `${item.quantity} × ${item.offeringName}`).join("; "),
-          "Occasion": order.occasion || "Not provided",
-          "Theme / design": order.theme || "Not provided",
-          "Colors": order.colors || "Not provided",
-          "Personalization": order.personalization || "Not provided",
           "Allergy notes": order.allergyNotes || "None provided",
-          "Other notes": order.notes || "None provided",
+          "Order notes": order.notes || "None provided",
         }),
       });
       if (response.ok) emailStatus = "sent";
