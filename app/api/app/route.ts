@@ -147,6 +147,27 @@ export async function POST(request: Request) {
         await log(db, user.userId, "update", "custom_order", orderId, { orderNumber: order[0].orderNumber, status });
         return ok();
       }
+      case "setCustomOrderEmailStatus": {
+        const emailStatus = text(body.emailStatus, 20);
+        if (!["sent", "pending", "failed"].includes(emailStatus)) throw new Error("Choose a valid email status.");
+        const orderId = text(body.id, 80);
+        const order = await db.select({ id: s.customOrders.id }).from(s.customOrders)
+          .where(and(eq(s.customOrders.id, orderId), eq(s.customOrders.userId, user.userId))).limit(1);
+        if (!order[0]) throw new Error("Order not found.");
+        await db.update(s.customOrders).set({ emailStatus: emailStatus as "sent" | "pending" | "failed", updatedAt: stamp }).where(eq(s.customOrders.id, orderId));
+        return ok();
+      }
+      case "deleteCustomOrder": {
+        if (account.role !== "owner") throw new Error("Only an owner can permanently delete orders.");
+        const orderId = text(body.id, 80);
+        const order = await db.select({ id: s.customOrders.id, orderNumber: s.customOrders.orderNumber }).from(s.customOrders)
+          .where(and(eq(s.customOrders.id, orderId), eq(s.customOrders.userId, user.userId))).limit(1);
+        if (!order[0]) throw new Error("Order not found.");
+        await db.delete(s.customOrderItems).where(eq(s.customOrderItems.orderId, orderId));
+        await db.delete(s.customOrders).where(eq(s.customOrders.id, orderId));
+        await log(db, user.userId, "delete", "custom_order", orderId, { orderNumber: order[0].orderNumber });
+        return ok();
+      }
       case "saveCategory": {
         const name = text(body.name, 80); if (!name) throw new Error("Category name is required.");
         const rowId = body.id || id();

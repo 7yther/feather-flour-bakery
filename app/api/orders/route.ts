@@ -77,36 +77,46 @@ export async function POST(request: Request) {
   }
 
   const notificationEmail = clean((env as unknown as Record<string, unknown>).ORDER_NOTIFICATION_EMAIL, 160);
-  let emailStatus: "sent" | "failed" = "failed";
-  if (notificationEmail) {
-    try {
-      const response = await fetch(`https://formsubmit.co/ajax/${notificationEmail}`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          accept: "application/json",
-          origin: "https://featherandflourbakery.com",
-          referer: "https://featherandflourbakery.com/",
-        },
-        body: JSON.stringify({
-          _subject: `New Feather & Flour online order ${orderNumber}`,
-          _template: "table",
-          "Order number": orderNumber,
-          "Customer name": customerName,
-          "Customer email": customerEmail || "Not provided",
-          "Phone": customerPhone,
-          "Delivery address": [address1, address2, `${city}, ${state} ${postalCode}`].filter(Boolean).join(", "),
-          "Requested date and time": requestedAt.toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "full", timeStyle: "short" }),
-          "Cookie selections": items.map((item) => `${item.quantity} × ${item.offeringName}`).join("; "),
-          "Allergy notes": order.allergyNotes || "None provided",
-          "Order notes": order.notes || "None provided",
-        }),
-      });
-      if (response.ok) emailStatus = "sent";
-    } catch (error) {
-      console.error("Order notification email failed", error);
-    }
+  const emailStatus = notificationEmail ? "pending" : "failed";
+  if (!notificationEmail) await db.update(s.customOrders).set({ emailStatus, updatedAt: new Date().toISOString() }).where(eq(s.customOrders.id, orderId));
+  return Response.json({
+    ok: true,
+    orderId,
+    orderNumber,
+    emailStatus,
+    emailEndpoint: notificationEmail ? `https://formsubmit.co/ajax/${notificationEmail}` : null,
+    emailPayload: {
+      _subject: `New Feather & Flour online order ${orderNumber}`,
+      _template: "table",
+      "Order number": orderNumber,
+      "Customer name": customerName,
+      "Customer email": customerEmail || "Not provided",
+      "Phone": customerPhone,
+      "Delivery address": [address1, address2, `${city}, ${state} ${postalCode}`].filter(Boolean).join(", "),
+      "Requested date and time": requestedAt.toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "full", timeStyle: "short" }),
+      "Cookie selections": items.map((item) => `${item.quantity} × ${item.offeringName}`).join("; "),
+      "Allergy notes": order.allergyNotes || "None provided",
+      "Order notes": order.notes || "None provided",
+    },
+  });
+}
+
+export async function PATCH(request: Request) {
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const orderId = clean(body.orderId, 80);
+  const customerPhone = cleanPhone(body.customerPhone);
+  const emailStatus = clean(body.emailStatus, 20);
+  if (!orderId || !customerPhone || !["sent", "pending", "failed"].includes(emailStatus)) {
+    return Response.json({ error: "Invalid email delivery update." }, { status: 400 });
   }
-  await db.update(s.customOrders).set({ emailStatus, updatedAt: new Date().toISOString() }).where(eq(s.customOrders.id, orderId));
-  return Response.json({ ok: true, orderNumber, emailStatus });
+  const db = getDb();
+  const workspaceId = getWorkspaceId();
+  const order = await db.select({ id: s.customOrders.id }).from(s.customOrders).where(and(
+    eq(s.customOrders.id, orderId),
+    eq(s.customOrders.userId, workspaceId),
+    eq(s.customOrders.customerPhone, customerPhone),
+  )).limit(1);
+  if (!order[0]) return Response.json({ error: "Order not found." }, { status: 404 });
+  await db.update(s.customOrders).set({ emailStatus: emailStatus as "sent" | "pending" | "failed", updatedAt: new Date().toISOString() }).where(eq(s.customOrders.id, orderId));
+  return Response.json({ ok: true });
 }

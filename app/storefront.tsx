@@ -45,8 +45,19 @@ export default function Storefront({ bakery, offerings }: Props) {
     payload.items = offerings.map((item) => ({ offeringId: item.id, quantity: quantities[item.id] || 0 })).filter((item) => item.quantity > 0);
     try {
       const response = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-      const result = await response.json() as { error?: string; orderNumber?: string };
+      const result = await response.json() as { error?: string; orderId?: string; orderNumber?: string; emailEndpoint?: string | null; emailPayload?: Record<string, string> };
       if (!response.ok) throw new Error(result.error || "We could not send your order request.");
+      if (result.orderId && result.emailEndpoint && result.emailPayload) {
+        let emailStatus: "sent" | "pending" | "failed" = "failed";
+        try {
+          const emailResponse = await fetch(result.emailEndpoint, { method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: JSON.stringify(result.emailPayload) });
+          const emailResult = await emailResponse.json().catch(() => ({})) as { success?: string | boolean; message?: string };
+          const activated = emailResponse.ok && String(emailResult.success).toLowerCase() === "true";
+          const awaitingActivation = emailResponse.ok && /activation/i.test(String(emailResult.message || ""));
+          emailStatus = activated ? "sent" : awaitingActivation ? "pending" : "failed";
+        } catch { emailStatus = "failed"; }
+        await fetch("/api/orders", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderId: result.orderId, customerPhone: payload.customerPhone, emailStatus }) }).catch(() => undefined);
+      }
       setOrderNumber(result.orderNumber || "received");
       setTimeout(() => document.getElementById("order")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
     } catch (reason) {
