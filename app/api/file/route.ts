@@ -6,6 +6,7 @@ const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "applicat
 export async function POST(request: Request) {
   const user = await getChatGPTUser();
   if (!user) return Response.json({ error: "Sign in required" }, { status: 401 });
+  const workspaceId = env.BAKERY_WORKSPACE_ID?.trim() || user.userId;
   if (!env.BUCKET) return Response.json({ error: "File storage is unavailable" }, { status: 503 });
   const form = await request.formData();
   const file = form.get("file");
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
   if (!allowedTypes.has(file.type)) return Response.json({ error: "Use a JPG, PNG, WebP, or PDF file" }, { status: 400 });
   if (file.size > 8 * 1024 * 1024) return Response.json({ error: "File must be under 8 MB" }, { status: 400 });
   const extension = file.name.split(".").pop()?.replace(/[^a-z0-9]/gi, "").slice(0, 8) || "bin";
-  const key = `${user.userId}/${crypto.randomUUID()}.${extension}`;
+  const key = `${workspaceId}/${crypto.randomUUID()}.${extension}`;
   await env.BUCKET.put(key, file.stream(), { httpMetadata: { contentType: file.type }, customMetadata: { originalName: file.name.slice(0, 200) } });
   return Response.json({ key, url: `/api/file?key=${encodeURIComponent(key)}` });
 }
@@ -21,8 +22,9 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   const user = await getChatGPTUser();
   if (!user) return new Response("Sign in required", { status: 401 });
+  const workspaceId = env.BAKERY_WORKSPACE_ID?.trim() || user.userId;
   const key = new URL(request.url).searchParams.get("key") || "";
-  if (!key.startsWith(`${user.userId}/`) || !env.BUCKET) return new Response("Not found", { status: 404 });
+  if (!key.startsWith(`${workspaceId}/`) || !env.BUCKET) return new Response("Not found", { status: 404 });
   const object = await env.BUCKET.get(key);
   if (!object) return new Response("Not found", { status: 404 });
   const headers = new Headers(); object.writeHttpMetadata(headers); headers.set("etag", object.httpEtag); headers.set("cache-control", "private, max-age=3600");

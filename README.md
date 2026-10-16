@@ -17,6 +17,7 @@ The production app is hosted with OpenAI Sites because it uses server-side sign-
 - Expense, vendor event, and sales-tax tracking
 - Financial reports
 - Responsive phone, tablet, and desktop layouts
+- Private shared workspace for invited team members
 
 ## Local development
 

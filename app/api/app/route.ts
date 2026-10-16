@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
 import * as s from "@/db/schema";
 import { getChatGPTUser } from "@/app/chatgpt-auth";
@@ -15,10 +16,11 @@ async function auth() {
   if (!user) return null;
   const db = getDb();
   const stamp = now();
+  const workspaceId = env.BAKERY_WORKSPACE_ID?.trim() || user.userId;
   await db.insert(s.users).values({ id: user.userId, email: user.email, displayName: user.displayName, createdAt: stamp, updatedAt: stamp })
     .onConflictDoUpdate({ target: s.users.id, set: { email: user.email, displayName: user.displayName, updatedAt: stamp } });
-  await db.insert(s.settings).values({ userId: user.userId, contactEmail: user.email, updatedAt: stamp }).onConflictDoNothing();
-  return { user, db };
+  await db.insert(s.settings).values({ userId: workspaceId, contactEmail: user.email, updatedAt: stamp }).onConflictDoNothing();
+  return { user: { ...user, userId: workspaceId }, db };
 }
 
 async function bootstrap(userId: string) {
