@@ -1,1 +1,0 @@
-import{r as e,t}from"./app-auth-CFiT_r9_.js";async function n(n){let r=await n.json().catch(()=>({})),i=await t(r.username,r.password);return i?(await e(i,new URL(n.url).protocol===`https:`),Response.json({ok:!0})):Response.json({error:`Invalid username or password.`},{status:401})}export{n as POST};
