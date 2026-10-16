@@ -1,8 +1,9 @@
-import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import * as s from "@/db/schema";
 import { getAppUser, getWorkspaceId, hashPassword, normalizeUsername, verifyPassword } from "@/lib/app-auth";
 import { calculateSaleTotals, inventoryReversal, recipeUnitCost } from "@/lib/financial";
+import { validateTeamRoleChange } from "@/lib/team-roles";
 
 const now = () => new Date().toISOString();
 const id = () => crypto.randomUUID();
@@ -104,6 +105,16 @@ export async function POST(request: Request) {
         if(body.id===account.id&&!body.active)throw new Error("You cannot disable your own login.");
         await db.update(s.appUsers).set({active:!!body.active,updatedAt:stamp}).where(eq(s.appUsers.id,body.id));
         await db.delete(s.appSessions).where(eq(s.appSessions.userId,body.id));
+        return ok();
+      }
+      case "setTeamUserRole": {
+        if(account.role!=="owner")throw new Error("Only an owner can change team roles.");
+        const target=(await db.select({id:s.appUsers.id,role:s.appUsers.role,displayName:s.appUsers.displayName}).from(s.appUsers).where(eq(s.appUsers.id,String(body.id||""))).limit(1))[0];
+        if(!target)throw new Error("Team member not found.");
+        const owners=await db.select({n:sql<number>`count(*)`}).from(s.appUsers).where(and(eq(s.appUsers.role,"owner"),eq(s.appUsers.active,true),ne(s.appUsers.id,target.id)));
+        const role=validateTeamRoleChange({actorRole:account.role,currentRole:target.role,requestedRole:body.role,remainingActiveOwnerCount:Number(owners[0]?.n||0)});
+        await db.update(s.appUsers).set({role,updatedAt:stamp}).where(eq(s.appUsers.id,target.id));
+        await log(db,user.userId,"update","team_user",target.id,{displayName:target.displayName,role});
         return ok();
       }
       case "resetTeamPassword": {

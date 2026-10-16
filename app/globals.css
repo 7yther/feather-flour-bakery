@@ -118,6 +118,9 @@ body .workspace{margin-left:278px}
 .team-list article>div:nth-child(2) strong,.team-list article>div:nth-child(2) span{display:block}
 .team-list article>div:nth-child(2) span{margin-top:2px;color:var(--muted);font-size:10px}
 .team-list article>b{font-size:10px}
+.team-actions{align-items:center}
+.role-select{height:39px;border:1px solid var(--beige);border-radius:10px;background:var(--cream);color:var(--ink);padding:0 30px 0 11px;font-weight:700;text-transform:capitalize;cursor:pointer}
+.role-select:disabled{opacity:.55;cursor:not-allowed}
 
 @media(max-width:820px){.team-grid{grid-template-columns:1fr}.team-list article{grid-template-columns:auto 1fr auto}.team-list .row-actions{grid-column:2/-1;grid-row:auto;flex-direction:row}.team-list .row-actions .secondary{width:auto;padding-inline:13px}}
-@media(max-width:590px){.login-page{padding:12px}.login-card{padding:26px 20px;border-radius:22px}.login-copy h2{font-size:28px}.team-list article{grid-template-columns:auto 1fr}.team-list article>b{grid-column:2}.team-list .row-actions{grid-column:1/-1}.team-list .row-actions>*{flex:1}}
+@media(max-width:590px){.login-page{padding:12px}.login-card{padding:26px 20px;border-radius:22px}.login-copy h2{font-size:28px}.team-list article{grid-template-columns:auto 1fr}.team-list article>b{grid-column:2}.team-list .row-actions{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr}.team-list .row-actions>*{width:100%;padding-inline:10px}.team-list .role-select{grid-column:1/-1}}
