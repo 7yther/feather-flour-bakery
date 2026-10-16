@@ -6,7 +6,7 @@ A private, mobile-friendly bakery management system for Feather & Flour Bakery.
 
 [Open Feather & Flour Bakery](https://feather-flour-bakery.wxrjjy787n.chatgpt.site/)
 
-The production app is hosted with OpenAI Sites because it uses server-side sign-in and a Cloudflare D1 database. The GitHub repository stores the source code and version history; GitHub Pages cannot run the server and database portions of this application.
+The production app is hosted with OpenAI Sites because it uses secure server-side username/password sessions and a Cloudflare D1 database. The GitHub repository stores the source code and version history; GitHub Pages cannot run the server and database portions of this application.
 
 ## Features
 
@@ -43,6 +43,6 @@ pnpm build
 - Next.js-compatible app built with Vinext
 - Cloudflare Worker runtime
 - Cloudflare D1 database with Drizzle ORM
-- OpenAI Sites hosting and sign-in
+- OpenAI Sites hosting with private in-app username/password access
 
 Production data is not stored in this repository. Environment files, local databases, build output, and credentials are ignored by Git.

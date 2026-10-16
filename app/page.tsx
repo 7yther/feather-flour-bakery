@@ -1,9 +1,11 @@
-import { requireChatGPTUser, chatGPTSignOutPath } from "./chatgpt-auth";
 import BakeryApp from "./bakery-app";
+import LoginForm from "./login-form";
+import { getAppUser } from "@/lib/app-auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const user = await requireChatGPTUser("/");
-  return <BakeryApp userName={user.displayName} signOutPath={chatGPTSignOutPath("/")} />;
+  const user = await getAppUser();
+  if(!user)return <LoginForm/>;
+  return <BakeryApp userName={user.displayName} signOutPath="/api/auth/logout" />;
 }

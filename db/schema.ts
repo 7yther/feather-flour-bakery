@@ -9,6 +9,24 @@ export const users = sqliteTable("users", {
   id: text("id").primaryKey(), email: text("email").notNull(), displayName: text("display_name").notNull(), ...timestamps,
 });
 
+export const appUsers = sqliteTable("app_users", {
+  id: text("id").primaryKey(),
+  username: text("username").notNull(),
+  displayName: text("display_name").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role", { enum: ["owner", "staff"] }).notNull().default("staff"),
+  active: integer("active", { mode: "boolean" }).notNull().default(true),
+  ...timestamps,
+}, (t) => [uniqueIndex("app_users_username").on(t.username)]);
+
+export const appSessions = sqliteTable("app_sessions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at").notNull(),
+}, (t) => [uniqueIndex("app_sessions_token_hash").on(t.tokenHash), index("app_sessions_user").on(t.userId)]);
+
 export const settings = sqliteTable("settings", {
   userId: text("user_id").primaryKey(), bakeryName: text("bakery_name").notNull().default("Feather & Flour Bakery"),
   contactEmail: text("contact_email").notNull().default(""), phone: text("phone").notNull().default(""),

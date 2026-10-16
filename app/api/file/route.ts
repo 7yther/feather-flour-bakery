@@ -1,12 +1,12 @@
 import { env } from "cloudflare:workers";
-import { getChatGPTUser } from "@/app/chatgpt-auth";
+import { getAppUser, getWorkspaceId } from "@/lib/app-auth";
 
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
 
 export async function POST(request: Request) {
-  const user = await getChatGPTUser();
+  const user = await getAppUser();
   if (!user) return Response.json({ error: "Sign in required" }, { status: 401 });
-  const workspaceId = env.BAKERY_WORKSPACE_ID?.trim() || user.userId;
+  const workspaceId = getWorkspaceId();
   if (!env.BUCKET) return Response.json({ error: "File storage is unavailable" }, { status: 503 });
   const form = await request.formData();
   const file = form.get("file");
@@ -20,9 +20,9 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const user = await getChatGPTUser();
+  const user = await getAppUser();
   if (!user) return new Response("Sign in required", { status: 401 });
-  const workspaceId = env.BAKERY_WORKSPACE_ID?.trim() || user.userId;
+  const workspaceId = getWorkspaceId();
   const key = new URL(request.url).searchParams.get("key") || "";
   if (!key.startsWith(`${workspaceId}/`) || !env.BUCKET) return new Response("Not found", { status: 404 });
   const object = await env.BUCKET.get(key);

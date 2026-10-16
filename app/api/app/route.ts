@@ -1,8 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
-import { env } from "cloudflare:workers";
 import { getDb } from "@/db";
 import * as s from "@/db/schema";
-import { getChatGPTUser } from "@/app/chatgpt-auth";
+import { getAppUser, getWorkspaceId, hashPassword, normalizeUsername, verifyPassword } from "@/lib/app-auth";
 import { calculateSaleTotals, inventoryReversal, recipeUnitCost } from "@/lib/financial";
 
 const now = () => new Date().toISOString();
@@ -12,15 +11,13 @@ const whole = (value: unknown) => Math.max(0, Math.floor(Number(value) || 0));
 const text = (value: unknown, max = 500) => String(value ?? "").trim().slice(0, max);
 
 async function auth() {
-  const user = await getChatGPTUser();
-  if (!user) return null;
+  const account = await getAppUser();
+  if (!account) return null;
   const db = getDb();
   const stamp = now();
-  const workspaceId = env.BAKERY_WORKSPACE_ID?.trim() || user.userId;
-  await db.insert(s.users).values({ id: user.userId, email: user.email, displayName: user.displayName, createdAt: stamp, updatedAt: stamp })
-    .onConflictDoUpdate({ target: s.users.id, set: { email: user.email, displayName: user.displayName, updatedAt: stamp } });
-  await db.insert(s.settings).values({ userId: workspaceId, contactEmail: user.email, updatedAt: stamp }).onConflictDoNothing();
-  return { user: { ...user, userId: workspaceId }, db };
+  const workspaceId = getWorkspaceId();
+  await db.insert(s.settings).values({ userId: workspaceId, contactEmail: "", updatedAt: stamp }).onConflictDoNothing();
+  return { user: { ...account, userId: workspaceId }, account, db };
 }
 
 async function bootstrap(userId: string) {
@@ -47,7 +44,7 @@ async function bootstrap(userId: string) {
 export async function GET() {
   const ctx = await auth();
   if (!ctx) return Response.json({ error: "Sign in required" }, { status: 401 });
-  const { db, user } = ctx;
+  const { db, user, account } = ctx;
   await bootstrap(user.userId);
   const uid = user.userId;
   const [appSettings, categories, products, ingredients, recipes, recipeIngredients, taxProfiles, allTaxComponents, sales, allSaleItems, allTaxes, inventory, expenseCategories, expenses, events, eventInventory, audits] = await Promise.all([
@@ -73,23 +70,57 @@ export async function GET() {
   const profileIds = new Set(taxProfiles.map((p) => p.id));
   const saleIds = new Set(sales.map((x) => x.id));
   const eventIds = new Set(events.map((x) => x.id));
+  const teamUsers=account.role==="owner"?await db.select({id:s.appUsers.id,username:s.appUsers.username,displayName:s.appUsers.displayName,role:s.appUsers.role,active:s.appUsers.active,createdAt:s.appUsers.createdAt}).from(s.appUsers).orderBy(asc(s.appUsers.username)):[];
   return Response.json({
     user, settings: appSettings[0], categories, products, ingredients, recipes,
     recipeIngredients: recipeIngredients.filter((x) => recipeIds.has(x.recipeId)), taxProfiles,
     taxComponents: allTaxComponents.filter((x) => profileIds.has(x.profileId)), sales,
     saleItems: allSaleItems.filter((x) => saleIds.has(x.saleId)), appliedTaxes: allTaxes.filter((x) => saleIds.has(x.saleId)),
-    inventory, expenseCategories, expenses, events, eventInventory: eventInventory.filter((x) => eventIds.has(x.eventId)), audits,
+    inventory, expenseCategories, expenses, events, eventInventory: eventInventory.filter((x) => eventIds.has(x.eventId)), audits, teamUsers,
   });
 }
 
 export async function POST(request: Request) {
   const ctx = await auth();
   if (!ctx) return Response.json({ error: "Sign in required" }, { status: 401 });
-  const { db, user } = ctx;
+  const { db, user, account } = ctx;
   const body = await request.json() as Record<string, any>;
   const stamp = now();
   try {
     switch (body.action) {
+      case "createTeamUser": {
+        if(account.role!=="owner")throw new Error("Only the owner can add team logins.");
+        const username=normalizeUsername(body.username); const password=String(body.password||""); const displayName=text(body.displayName,80);
+        if(username.length<3)throw new Error("Username must be at least 3 characters.");
+        if(password.length<10)throw new Error("Password must be at least 10 characters.");
+        if(!displayName)throw new Error("Display name is required.");
+        const exists=await db.select({id:s.appUsers.id}).from(s.appUsers).where(eq(s.appUsers.username,username)).limit(1);
+        if(exists.length)throw new Error("That username is already in use.");
+        await db.insert(s.appUsers).values({id:id(),username,displayName,passwordHash:await hashPassword(password),role:"staff",active:true,createdAt:stamp,updatedAt:stamp});
+        return ok();
+      }
+      case "setTeamUserActive": {
+        if(account.role!=="owner")throw new Error("Only the owner can manage team logins.");
+        if(body.id===account.id&&!body.active)throw new Error("You cannot disable your own login.");
+        await db.update(s.appUsers).set({active:!!body.active,updatedAt:stamp}).where(eq(s.appUsers.id,body.id));
+        await db.delete(s.appSessions).where(eq(s.appSessions.userId,body.id));
+        return ok();
+      }
+      case "resetTeamPassword": {
+        if(account.role!=="owner")throw new Error("Only the owner can reset passwords.");
+        const password=String(body.password||""); if(password.length<10)throw new Error("Password must be at least 10 characters.");
+        await db.update(s.appUsers).set({passwordHash:await hashPassword(password),updatedAt:stamp}).where(eq(s.appUsers.id,body.id));
+        await db.delete(s.appSessions).where(eq(s.appSessions.userId,body.id));
+        return ok();
+      }
+      case "changeOwnPassword": {
+        const current=String(body.currentPassword||""); const password=String(body.password||"");
+        if(password.length<10)throw new Error("New password must be at least 10 characters.");
+        const row=(await db.select().from(s.appUsers).where(eq(s.appUsers.id,account.id)).limit(1))[0];
+        if(!row||!await verifyPassword(current,row.passwordHash))throw new Error("Current password is incorrect.");
+        await db.update(s.appUsers).set({passwordHash:await hashPassword(password),updatedAt:stamp}).where(eq(s.appUsers.id,account.id));
+        return ok();
+      }
       case "saveCategory": {
         const name = text(body.name, 80); if (!name) throw new Error("Category name is required.");
         const rowId = body.id || id();
