@@ -24,17 +24,26 @@ export default function BakeryApp({userName,signOutPath}:{userName:string;signOu
   const [loading,setLoading]=useState(true); const [busy,setBusy]=useState(false); const [error,setError]=useState(""); const [notice,setNotice]=useState(""); const [mobile,setMobile]=useState(false);
   const load=async()=>{setLoading(true);setError("");try{const r=await fetch("/api/app",{cache:"no-store"});const j:any=await r.json();if(!r.ok)throw new Error(j.error);setData(j);if(j.settings?.theme==="dark")document.documentElement.classList.add("dark");else document.documentElement.classList.remove("dark");}catch(e:any){setError(e.message||"Could not load bakery data.");}finally{setLoading(false)}};
   useEffect(()=>{load()},[]);
+  useEffect(()=>{
+    if(!mobile)return;
+    const close=(event:KeyboardEvent)=>{if(event.key==="Escape")setMobile(false)};
+    const previous=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    window.addEventListener("keydown",close);
+    return()=>{document.body.style.overflow=previous;window.removeEventListener("keydown",close)};
+  },[mobile]);
   const act=async(payload:any,message="Saved")=>{setBusy(true);setError("");try{const r=await fetch("/api/app",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});const j:any=await r.json();if(!r.ok)throw new Error(j.error);setNotice(message);setTimeout(()=>setNotice(""),2600);await load();return j;}catch(e:any){setError(e.message||"Something went wrong.");throw e;}finally{setBusy(false)}};
   const currency=data.settings?.currency||"USD";
   const title=NAV.find(x=>x.id===section)?.label||"Dashboard";
   return <div className="app-shell">
-    <aside className={`sidebar ${mobile?"open":""}`}>
-      <div className="brand"><div className="brand-mark" aria-label="Feather and Flour logo"><FeatherIcon size={23} strokeWidth={1.6}/></div><div className="brand-copy"><strong>{data.settings?.bakeryName||"Feather & Flour Bakery"}</strong><small>SMALL-BATCH BAKERY · MOBILE, AL</small></div><button className="icon-btn mobile-close" onClick={()=>setMobile(false)}><X size={18}/></button></div>
-      <nav>{NAV.map(({id,label,icon:Icon})=><button key={id} className={section===id?"active":""} onClick={()=>{setSection(id);setMobile(false)}}><Icon size={18}/><span>{label}</span>{section===id&&<ChevronRight size={15}/>}</button>)}</nav>
+    <aside id="app-navigation" aria-label="Bakery navigation" className={`sidebar ${mobile?"open":""}`}>
+      <div className="brand"><div className="brand-mark" aria-label="Feather and Flour logo"><FeatherIcon size={23} strokeWidth={1.6}/></div><div className="brand-copy"><strong>{data.settings?.bakeryName||"Feather & Flour Bakery"}</strong><small>SMALL-BATCH BAKERY · MOBILE, AL</small></div><button className="icon-btn mobile-close" aria-label="Close navigation" onClick={()=>setMobile(false)}><X size={18}/></button></div>
+      <nav>{NAV.map(({id,label,icon:Icon})=><button key={id} aria-current={section===id?"page":undefined} className={section===id?"active":""} onClick={()=>{setSection(id);setMobile(false)}}><Icon size={18}/><span>{label}</span>{section===id&&<ChevronRight size={15}/>}</button>)}</nav>
       <div className="sidebar-foot"><div className="avatar">{userName.slice(0,1).toUpperCase()}</div><div><strong>{userName}</strong><a href={signOutPath} target="_top">Sign out</a></div></div>
     </aside>
+    {mobile&&<button className="mobile-backdrop" aria-label="Close navigation" onClick={()=>setMobile(false)}/>}
     <main className="workspace">
-      <header className="topbar"><button className="icon-btn menu-btn" onClick={()=>setMobile(true)}><Menu/></button><div><small>Feather & Flour Bakery</small><h1>{title}</h1></div><div className="top-actions"><button className="icon-btn" title="Refresh" onClick={load}><RefreshCw size={18}/></button><button className="primary" onClick={()=>setSection("sale")}><Plus size={17}/> Record sale</button></div></header>
+      <header className="topbar"><button className="icon-btn menu-btn" aria-label="Open navigation" aria-controls="app-navigation" aria-expanded={mobile} onClick={()=>setMobile(true)}><Menu/></button><div><small>Feather & Flour Bakery</small><h1>{title}</h1></div><div className="top-actions"><button className="icon-btn" title="Refresh" aria-label="Refresh data" onClick={load}><RefreshCw size={18}/></button><button className="primary" onClick={()=>setSection("sale")}><Plus size={17}/> Record sale</button></div></header>
       {error&&<div className="alert error"><X size={17}/><span>{error}</span><button onClick={()=>setError("")}>Dismiss</button></div>}
       {notice&&<div className="toast"><Check size={17}/>{notice}</div>}
       <div className="content">{loading?<Loading/>:<>
