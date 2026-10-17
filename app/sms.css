@@ -48,3 +48,34 @@ p:has(> .lucide-message-circle) {
   background: color-mix(in srgb, #658c9b 16%, transparent);
   color: #4f7482;
 }
+
+.order-detail .modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.order-detail .modal-actions > * {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: max-content;
+  white-space: nowrap;
+}
+
+.order-detail .modal-actions .role-select {
+  min-width: 132px;
+}
+
+@media (max-width: 590px) {
+  .order-detail .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .order-detail .modal-actions > * {
+    width: 100%;
+    min-width: 0;
+  }
+}

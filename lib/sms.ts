@@ -36,6 +36,13 @@ export function smsKindForOrderStatus(status: string): OrderSmsKind | null {
   return null;
 }
 
+export function friendlySmsProviderError(code: number | undefined, message: string) {
+  if (code === 572002) {
+    return "Twilio trial blocked this text because the customer's phone number is not verified. Verify the number in Twilio for testing, or upgrade Twilio before texting customers. (Code 572002)";
+  }
+  return code ? `${message} (${code})` : message;
+}
+
 export function orderSmsBody(kind: OrderSmsKind, order: SmsOrder) {
   const date = requestedDate(order.requestedAt);
   const firstName = order.customerName.trim().split(/\s+/)[0] || "there";

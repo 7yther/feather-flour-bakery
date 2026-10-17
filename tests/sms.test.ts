@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { orderSmsBody, smsKindForOrderStatus, toE164 } from "../lib/sms.ts";
+import { friendlySmsProviderError, orderSmsBody, smsKindForOrderStatus, toE164 } from "../lib/sms.ts";
 
 test("normalizes common US phone numbers for SMS", () => {
   assert.equal(toE164("(251) 377-9016"), "+12513779016");
@@ -25,4 +25,11 @@ test("initial order text identifies the bakery and includes opt out", () => {
   assert.match(body, /^Feather & Flour:/);
   assert.match(body, /FF-20261016-ABC123/);
   assert.match(body, /Reply STOP to unsubscribe\.$/);
+});
+
+test("explains the Twilio trial recipient restriction in plain language", () => {
+  const message = friendlySmsProviderError(572002, "Provider wording");
+  assert.match(message, /Twilio trial blocked this text/);
+  assert.match(message, /verify the number/i);
+  assert.match(message, /Code 572002/);
 });

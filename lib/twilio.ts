@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { orderSmsBody, toE164, type OrderSmsKind, type SmsOrder } from "@/lib/sms";
+import { friendlySmsProviderError, orderSmsBody, toE164, type OrderSmsKind, type SmsOrder } from "@/lib/sms";
 
 type TwilioEnv = {
   TWILIO_ACCOUNT_SID?: string;
@@ -40,7 +40,7 @@ export async function sendOrderSms(order: SmsOrder, kind: OrderSmsKind): Promise
     const payload = await response.json().catch(() => ({})) as { sid?: string; message?: string; code?: number };
     if (!response.ok || !payload.sid) {
       const detail = payload.message || `Twilio returned ${response.status}.`;
-      return { status: "failed", messageSid: null, error: payload.code ? `${detail} (${payload.code})` : detail };
+      return { status: "failed", messageSid: null, error: friendlySmsProviderError(payload.code, detail) };
     }
     return { status: "sent", messageSid: payload.sid, error: "" };
   } catch {
