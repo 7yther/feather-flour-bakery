@@ -1,13 +1,14 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { ArrowRight, Check, ChevronDown, Clock3, Feather, Minus, PackageCheck, Phone, Plus, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ChevronDown, Clock3, Feather, MapPin, Minus, PackageCheck, Phone, Plus, ShieldCheck, Sparkles } from "lucide-react";
 import type { StorefrontOffering } from "@/lib/storefront";
 import styles from "./storefront.module.css";
 
 type Props = {
   bakery: { name: string; serviceArea: string; phone: string };
   offerings: StorefrontOffering[];
+  markets: { id:string; name:string; location:string; eventDate:string; boothNumber:string; photoUrl:string|null }[];
 };
 
 const localDateTime = (date: Date) => {
@@ -17,7 +18,7 @@ const localDateTime = (date: Date) => {
 
 const money = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 
-export default function Storefront({ bakery, offerings }: Props) {
+export default function Storefront({ bakery, offerings, markets }: Props) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -71,7 +72,7 @@ export default function Storefront({ bakery, offerings }: Props) {
         <span className={styles.brandMark}><Feather size={24} /></span>
         <span><strong>Feather <i>&</i> Flour</strong><small>HANDCRAFTED COOKIE STUDIO</small></span>
       </a>
-      <nav aria-label="Storefront navigation"><a href="#cookies">Cookies</a><a href="#how-it-works">How it works</a><a href="#order" className={styles.navOrder}>Start an order <ArrowRight size={15} /></a></nav>
+      <nav aria-label="Storefront navigation"><a href="#cookies">Cookies</a>{markets.length>0&&<a href="#markets">Markets</a>}<a href="#how-it-works">How it works</a><a href="#order" className={styles.navOrder}>Start an order <ArrowRight size={15} /></a></nav>
     </header>
 
     <section className={styles.hero} id="top">
@@ -105,6 +106,15 @@ export default function Storefront({ bakery, offerings }: Props) {
       <div><p className={styles.sectionKicker}>From flavor to cookie box</p><h2>Simple, personal, and baked with care.</h2></div>
       <ol><li><span>01</span><div><Sparkles/><h3>Build your box</h3><p>Choose one flavor or mix several, then enter the quantity you want of each.</p></div></li><li><span>02</span><div><Phone/><h3>We confirm everything</h3><p>We’ll contact you to confirm availability, final price, delivery, and payment.</p></div></li><li><span>03</span><div><PackageCheck/><h3>Your cookies are baked</h3><p>Every order is made fresh and prepared for your requested delivery date.</p></div></li></ol>
     </section>
+
+    {markets.length>0&&<section className={styles.markets} id="markets">
+      <p className={styles.sectionKicker}>Find Feather & Flour</p>
+      <div className={styles.marketHeading}><div><h2>Come see us at an upcoming market.</h2><p>Stop by our booth, say hello, and pick up your favorite fresh-baked cookies.</p></div><CalendarDays size={38}/></div>
+      <div className={styles.marketGrid}>{markets.map((market)=><article className={styles.marketCard} key={market.id}>
+        <div className={styles.marketImage}>{market.photoUrl?<img src={market.photoUrl} alt={`${market.name} market`} />:<span><Feather size={42}/></span>}</div>
+        <div className={styles.marketDetails}><time dateTime={market.eventDate}>{new Date(`${market.eventDate}T12:00:00`).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}</time><h3>{market.name}</h3><p><MapPin size={17}/><span>{market.location}</span></p>{market.boothNumber&&<strong>Find us at booth {market.boothNumber}</strong>}</div>
+      </article>)}</div>
+    </section>}
 
     <section className={styles.orderSection} id="order">
       <div className={styles.orderAside}>

@@ -28,10 +28,16 @@ export async function GET(request: Request) {
   if (!key.startsWith(`${workspaceId}/`) || !env.BUCKET) return new Response("Not found", { status: 404 });
   const user = await getAppUser();
   if (!user) {
-    const publicProduct = await getDb().select({ id: s.products.id }).from(s.products).where(and(
-      eq(s.products.userId, workspaceId), eq(s.products.active, true), eq(s.products.photoKey, key),
-    )).limit(1);
-    if (!publicProduct[0]) return new Response("Not found", { status: 404 });
+    const db = getDb();
+    const [publicProduct, publicEvent] = await Promise.all([
+      db.select({ id: s.products.id }).from(s.products).where(and(
+        eq(s.products.userId, workspaceId), eq(s.products.active, true), eq(s.products.photoKey, key),
+      )).limit(1),
+      db.select({ id: s.vendorEvents.id }).from(s.vendorEvents).where(and(
+        eq(s.vendorEvents.userId, workspaceId), eq(s.vendorEvents.publicVisible, true), eq(s.vendorEvents.photoKey, key),
+      )).limit(1),
+    ]);
+    if (!publicProduct[0] && !publicEvent[0]) return new Response("Not found", { status: 404 });
   }
   const object = await env.BUCKET.get(key);
   if (!object) return new Response("Not found", { status: 404 });

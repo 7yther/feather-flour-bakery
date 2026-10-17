@@ -202,6 +202,17 @@ export async function POST(request: Request) {
           db.insert(s.auditLogs).values({ id: id(), userId: user.userId, action: "adjust", entityType: "inventory", entityId: product[0].id, details: JSON.stringify({ quantityChange: qty, reason: text(body.reason) }), createdAt: stamp }),
         ]); return ok();
       }
+      case "setInventoryZero": {
+        const product = await db.select().from(s.products).where(and(eq(s.products.id, body.productId), eq(s.products.userId, user.userId))).limit(1);
+        if (!product[0]) throw new Error("Product not found.");
+        if (product[0].stockQty === 0) return ok();
+        const quantityChange = -product[0].stockQty;
+        await (db as any).batch([
+          db.update(s.products).set({ stockQty: 0, updatedAt: stamp }).where(eq(s.products.id, product[0].id)),
+          db.insert(s.inventoryTransactions).values({ id: id(), userId: user.userId, productId: product[0].id, type: "adjustment", quantityChange, reason: "Inventory set to zero", occurredAt: stamp }),
+          db.insert(s.auditLogs).values({ id: id(), userId: user.userId, action: "set_zero", entityType: "inventory", entityId: product[0].id, details: JSON.stringify({ previousQuantity: product[0].stockQty }), createdAt: stamp }),
+        ]); return ok();
+      }
       case "saveIngredient": {
         const name = text(body.name, 120); if (!name) throw new Error("Ingredient name is required.");
         const quantityMicros = Math.round(Number(body.purchaseQuantity) * 1_000_000); if (quantityMicros <= 0) throw new Error("Package quantity must be greater than zero.");
@@ -262,7 +273,7 @@ export async function POST(request: Request) {
       }
       case "saveEvent": {
         const name = text(body.name, 140); if (!name) throw new Error("Event name is required.");
-        const rowId = body.id || id(); const values = { name, location: text(body.location, 200), eventDate: body.eventDate || stamp.slice(0, 10), boothFeeCents: cents(body.boothFeeCents), notes: text(body.notes, 1000), updatedAt: stamp };
+        const rowId = body.id || id(); const values = { name, location: text(body.location, 300), eventDate: body.eventDate || stamp.slice(0, 10), boothFeeCents: cents(body.boothFeeCents), boothNumber: text(body.boothNumber, 80), photoKey: body.photoKey || null, publicVisible: body.publicVisible !== false, notes: text(body.notes, 1000), updatedAt: stamp };
         const queries: any[] = [];
         if (body.id) { queries.push(db.update(s.vendorEvents).set(values).where(and(eq(s.vendorEvents.id, rowId), eq(s.vendorEvents.userId, user.userId)))); queries.push(db.delete(s.eventInventory).where(eq(s.eventInventory.eventId, rowId))); }
         else queries.push(db.insert(s.vendorEvents).values({ id: rowId, userId: user.userId, createdAt: stamp, ...values }));

@@ -110,7 +110,8 @@ export const taxComponents = sqliteTable("tax_components", {
 
 export const vendorEvents = sqliteTable("vendor_events", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), name: text("name").notNull(), location: text("location").notNull(),
-  eventDate: text("event_date").notNull(), boothFeeCents: integer("booth_fee_cents").notNull().default(0), notes: text("notes").notNull().default(""), ...timestamps,
+  eventDate: text("event_date").notNull(), boothFeeCents: integer("booth_fee_cents").notNull().default(0), boothNumber: text("booth_number").notNull().default(""),
+  photoKey: text("photo_key"), publicVisible: integer("public_visible", { mode: "boolean" }).notNull().default(true), notes: text("notes").notNull().default(""), ...timestamps,
 }, (t) => [index("events_user_date").on(t.userId, t.eventDate)]);
 
 export const eventInventory = sqliteTable("event_inventory", {

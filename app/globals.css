@@ -40,6 +40,7 @@ body .workspace{margin-left:278px}
   .alert,.toast{top:80px;left:12px;right:12px;max-width:none}
   .table-wrap{-webkit-overflow-scrolling:touch;scrollbar-width:thin}
 }
+.inventory-bottom .row-actions{grid-column:auto!important;grid-row:auto!important;display:flex;flex-direction:row;flex-wrap:wrap;justify-content:flex-end}.inventory-bottom .text-btn:disabled{opacity:.4;cursor:not-allowed}
 
 @media(max-width:590px){
   .welcome,.recipe-hero,.events-hero{padding:20px;border-radius:18px}
