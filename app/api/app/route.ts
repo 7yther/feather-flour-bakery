@@ -4,6 +4,8 @@ import * as s from "@/db/schema";
 import { getAppUser, getWorkspaceId, hashPassword, normalizeUsername, verifyPassword } from "@/lib/app-auth";
 import { calculateSaleTotals, inventoryReversal, recipeUnitCost } from "@/lib/financial";
 import { validateTeamRoleChange } from "@/lib/team-roles";
+import { smsKindForOrderStatus } from "@/lib/sms";
+import { sendOrderSms } from "@/lib/twilio";
 
 const now = () => new Date().toISOString();
 const id = () => crypto.randomUUID();
@@ -138,14 +140,35 @@ export async function POST(request: Request) {
       }
       case "setCustomOrderStatus": {
         const status = text(body.status, 20);
-        if (!["new", "confirmed", "fulfilled", "cancelled"].includes(status)) throw new Error("Choose a valid order status.");
+        if (!["new", "confirmed", "ready", "fulfilled", "cancelled"].includes(status)) throw new Error("Choose a valid order status.");
         const orderId = text(body.id, 80);
-        const order = await db.select({ id: s.customOrders.id, orderNumber: s.customOrders.orderNumber }).from(s.customOrders)
+        const order = await db.select().from(s.customOrders)
           .where(and(eq(s.customOrders.id, orderId), eq(s.customOrders.userId, user.userId))).limit(1);
         if (!order[0]) throw new Error("Custom order not found.");
-        await db.update(s.customOrders).set({ status: status as "new" | "confirmed" | "fulfilled" | "cancelled", updatedAt: stamp }).where(eq(s.customOrders.id, orderId));
+        await db.update(s.customOrders).set({ status: status as "new" | "confirmed" | "ready" | "fulfilled" | "cancelled", updatedAt: stamp }).where(eq(s.customOrders.id, orderId));
+        const smsKind = smsKindForOrderStatus(status);
+        let smsStatus = order[0].smsStatus;
+        if (order[0].smsConsent && smsKind && order[0].smsLastKind !== smsKind) {
+          const sms = await sendOrderSms(order[0], smsKind);
+          smsStatus = sms.status;
+          await db.update(s.customOrders).set({ smsStatus: sms.status, smsLastKind: smsKind, smsMessageSid: sms.messageSid, smsLastError: sms.error, updatedAt: now() }).where(eq(s.customOrders.id, orderId));
+        }
         await log(db, user.userId, "update", "custom_order", orderId, { orderNumber: order[0].orderNumber, status });
-        return ok();
+        return Response.json({ ok: true, smsStatus });
+      }
+      case "resendCustomOrderSms": {
+        const orderId = text(body.id, 80);
+        const order = await db.select().from(s.customOrders)
+          .where(and(eq(s.customOrders.id, orderId), eq(s.customOrders.userId, user.userId))).limit(1);
+        if (!order[0]) throw new Error("Order not found.");
+        if (!order[0].smsConsent) throw new Error("This customer did not consent to order-status texts.");
+        const smsKind = smsKindForOrderStatus(order[0].status);
+        if (!smsKind) throw new Error("This order does not have a text-message template.");
+        const sms = await sendOrderSms(order[0], smsKind);
+        await db.update(s.customOrders).set({ smsStatus: sms.status, smsLastKind: smsKind, smsMessageSid: sms.messageSid, smsLastError: sms.error, updatedAt: now() }).where(eq(s.customOrders.id, orderId));
+        await log(db, user.userId, "send", "custom_order_sms", orderId, { orderNumber: order[0].orderNumber, kind: smsKind, status: sms.status });
+        if (sms.status === "failed") throw new Error(sms.error || "The text message could not be sent.");
+        return Response.json({ ok: true, smsStatus: sms.status });
       }
       case "setCustomOrderEmailStatus": {
         const emailStatus = text(body.emailStatus, 20);

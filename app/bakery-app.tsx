@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Archive, BarChart3, BookOpen, Boxes, CalendarDays, Check, ChevronRight, ClipboardList, Cookie, CreditCard, DollarSign, Download, Feather as FeatherIcon, FileText, LayoutDashboard, Menu, Moon, PackagePlus, Phone, Plus, Receipt, RefreshCw, Search, Settings, ShoppingBag, Sun, Tags, TrendingUp, Upload, Users, WalletCards, X } from "lucide-react";
+import { Archive, BarChart3, BookOpen, Boxes, CalendarDays, Check, ChevronRight, ClipboardList, Cookie, CreditCard, DollarSign, Download, Feather as FeatherIcon, FileText, LayoutDashboard, Menu, MessageCircle, Moon, PackagePlus, Phone, Plus, Receipt, RefreshCw, Search, Settings, ShoppingBag, Sun, Tags, TrendingUp, Upload, Users, WalletCards, X } from "lucide-react";
 
 type Data = { user:any; settings:any; categories:any[]; products:any[]; ingredients:any[]; recipes:any[]; recipeIngredients:any[]; taxProfiles:any[]; taxComponents:any[]; sales:any[]; saleItems:any[]; appliedTaxes:any[]; inventory:any[]; expenseCategories:any[]; expenses:any[]; events:any[]; eventInventory:any[]; audits:any[]; teamUsers:any[]; customOrders:any[]; customOrderItems:any[] };
 type Section = "dashboard"|"orders"|"sale"|"history"|"products"|"recipes"|"inventory"|"expenses"|"events"|"taxes"|"reports"|"settings";
@@ -64,7 +64,7 @@ export default function BakeryApp({userName,signOutPath}:{userName:string;signOu
       {notice&&<div className="toast"><Check size={17}/>{notice}</div>}
       <div className="content">{loading?<Loading/>:<>
         {section==="dashboard"&&<Dashboard data={data} currency={currency} go={setSection}/>} 
-        {section==="orders"&&<CustomOrders data={data} act={act} busy={busy}/>}
+        {section==="orders"&&<SmsOrders data={data} act={act} busy={busy}/>}
         {section==="sale"&&<NewSale data={data} currency={currency} act={act} busy={busy} done={()=>setSection("history")}/>} 
         {section==="history"&&<SalesHistory data={data} currency={currency} act={act} busy={busy}/>} 
         {section==="products"&&<Products data={data} currency={currency} act={act} busy={busy}/>} 
@@ -129,6 +129,47 @@ function SalesHistory({data,currency,act,busy}:{data:Data;currency:string;act:an
     {list.length?<div className="table-wrap"><table><thead><tr><th>Transaction</th><th>Date</th><th>Customer / location</th><th>Payment</th><th>Status</th><th className="right">Total</th></tr></thead><tbody>{list.map(s=><tr key={s.id} onClick={()=>setSelected(s)}><td><strong>{s.transactionNumber}</strong><small>{items(s).reduce((n,x)=>n+x.quantity,0)} items</small></td><td>{shortDate(s.soldAt)}<small>{new Date(s.soldAt).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</small></td><td>{s.customerName||s.location||"Walk-in"}<small>{s.location}</small></td><td className="capitalize">{s.paymentMethod}</td><td><span className={`status ${s.status}`}>{s.status}</span></td><td className="right"><strong>{dollar(s.totalCents,currency)}</strong><small>{dollar(s.taxCents,currency)} tax</small></td></tr>)}</tbody></table></div>:<Empty icon={Receipt} title="No matching sales" copy="Completed sales will appear here with a permanent audit history."/>}</Panel>
     {selected&&<div className="modal-backdrop" onMouseDown={()=>setSelected(null)}><div className="modal receipt-view" onMouseDown={e=>e.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><div className="receipt-brand"><div className="brand-mark">F<span>&</span>F</div><h2>{data.settings?.bakeryName}</h2><p>{data.settings?.address}</p></div><div className="receipt-meta"><span>{selected.transactionNumber}</span><span>{new Date(selected.soldAt).toLocaleString()}</span></div><div className="receipt-lines">{items(selected).map(i=><div key={i.id}><span>{i.quantity} × {i.productName}</span><b>{dollar(i.lineTotalCents,currency)}</b></div>)}</div><div className="totals"><div><span>Subtotal</span><b>{dollar(selected.subtotalCents,currency)}</b></div>{selected.discountCents>0&&<div><span>Discount</span><b>− {dollar(selected.discountCents,currency)}</b></div>}{taxes(selected).map(t=><div key={t.id}><span>{t.componentName} ({(t.rateBps/100).toFixed(2)}%)</span><b>{dollar(t.taxCents,currency)}</b></div>)}<div className="grand"><span>Total</span><strong>{dollar(selected.totalCents,currency)}</strong></div></div><p className="receipt-thanks">Thank you for supporting a small local bakery.</p><div className="modal-actions"><button className="secondary" onClick={()=>printReceipt(selected)}><FileText size={16}/>Print receipt</button>{selected.status==="completed"&&<><button className="secondary danger-text" disabled={busy} onClick={()=>reverse(selected,"refunded")}>Refund</button><button className="secondary danger-text" disabled={busy} onClick={()=>reverse(selected,"voided")}>Void</button></>}</div></div></div>}
   </div>
+}
+
+function SmsOrders({data,act,busy}:{data:Data;act:any;busy:boolean}) {
+  const [status,setStatus]=useState("all");
+  const [selected,setSelected]=useState<any>(null);
+  const [sending,setSending]=useState(false);
+  const list=data.customOrders.filter(order=>status==="all"||order.status===status);
+  const items=(order:any)=>data.customOrderItems.filter(item=>item.orderId===order.id);
+  const statusLabel=(value:string)=>({new:"Received",confirmed:"Approved",ready:"Ready",fulfilled:"Completed",cancelled:"Cancelled"}[value]||value);
+  const smsTone=(value:string)=>value==="sent"||value==="delivered"?"fulfilled":value==="pending"?"confirmed":value==="failed"?"cancelled":"voided";
+  const setOrderStatus=async(order:any,next:string)=>{
+    const result=await act({action:"setCustomOrderStatus",id:order.id,status:next},`Order marked ${statusLabel(next).toLowerCase()}`);
+    setSelected((current:any)=>current?{...current,status:next,smsStatus:result.smsStatus||current.smsStatus}:null);
+  };
+  const resendEmail=async(order:any)=>{
+    setSending(true);
+    try {
+      const emailStatus=await emailOnlineOrder(order,items(order));
+      const message=emailStatus==="sent"?"Order email sent":emailStatus==="pending"?"Activation email sent — activate FormSubmit in your inbox":"Email could not be sent";
+      await act({action:"setCustomOrderEmailStatus",id:order.id,emailStatus},message);
+      setSelected((current:any)=>current?{...current,emailStatus}:null);
+    } finally { setSending(false); }
+  };
+  const resendSms=async(order:any)=>{
+    setSending(true);
+    try {
+      await act({action:"resendCustomOrderSms",id:order.id},"Order text sent");
+      setSelected((current:any)=>current?{...current,smsStatus:"sent"}:null);
+    } finally { setSending(false); }
+  };
+  const remove=async(order:any)=>{
+    if(!window.confirm(`Permanently delete ${order.orderNumber}? This cannot be undone.`))return;
+    await act({action:"deleteCustomOrder",id:order.id},"Order permanently deleted");
+    setSelected(null);
+  };
+  return <div className="page-stack">
+    <Panel title="Online cookie orders" subtitle="Requests submitted through featherandflourbakery.com" actions={<div className="toolbar"><select value={status} onChange={event=>setStatus(event.target.value)}><option value="all">All statuses</option><option value="new">Received</option><option value="confirmed">Approved</option><option value="ready">Ready</option><option value="fulfilled">Completed</option><option value="cancelled">Cancelled</option></select><a className="secondary" href="/" target="_blank">Open storefront</a></div>}>
+      {list.length?<div className="table-wrap"><table><thead><tr><th>Order</th><th>Requested for</th><th>Customer</th><th>Cookies</th><th>Notifications</th><th>Status</th></tr></thead><tbody>{list.map(order=><tr key={order.id} onClick={()=>setSelected(order)}><td><strong>{order.orderNumber}</strong><small>{shortDate(order.createdAt)}</small></td><td><strong>{shortDate(order.requestedAt)}</strong><small>{new Date(order.requestedAt).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"})}</small></td><td><strong>{order.customerName}</strong><small>{order.customerPhone}</small></td><td>{items(order).reduce((sum,item)=>sum+item.quantity,0)}<small>{items(order).map(item=>item.offeringName).join(", ")}</small></td><td><span className={`status ${order.emailStatus==="sent"?"fulfilled":order.emailStatus==="pending"?"confirmed":"cancelled"}`}>Email {order.emailStatus}</span><small><span className={`status ${smsTone(order.smsStatus)}`}>Text {order.smsConsent?(order.smsStatus||"pending"):"not requested"}</span></small></td><td><span className={`status ${order.status}`}>{statusLabel(order.status)}</span></td></tr>)}</tbody></table></div>:<Empty icon={ClipboardList} title="No online orders yet" copy="New customer requests from your storefront will appear here automatically."/>}
+    </Panel>
+    {selected&&<div className="modal-backdrop" onMouseDown={()=>setSelected(null)}><div className="modal order-detail" onMouseDown={event=>event.stopPropagation()}><button className="modal-close" onClick={()=>setSelected(null)}><X/></button><span className="eyebrow">{selected.orderNumber}</span><h2>{selected.customerName}</h2><div className="order-detail-grid"><div><small>Requested delivery</small><strong>{new Date(selected.requestedAt).toLocaleString()}</strong></div><div><small>Phone</small><strong><a href={`tel:${selected.customerPhone}`}>{selected.customerPhone}</a></strong></div><div><small>Email</small><strong>{selected.customerEmail?<a href={`mailto:${selected.customerEmail}`}>{selected.customerEmail}</a>:"Not provided"}</strong></div><div><small>Text updates</small><strong>{selected.smsConsent?`Allowed · ${selected.smsStatus||"pending"}`:"Customer did not opt in"}</strong></div><div><small>Delivery address</small><strong>{[selected.address1,selected.address2,`${selected.city}, ${selected.state} ${selected.postalCode}`].filter(Boolean).join(", ")}</strong></div></div><h3>Cookie selection</h3><div className="order-item-list">{items(selected).map(item=><div key={item.id}><span>{item.offeringName}</span><strong>{item.quantity} cookies</strong></div>)}</div><h3>Order notes</h3><div className="order-notes"><p><b>Allergy notes</b>{selected.allergyNotes||"None provided"}</p><p><b>Other notes</b>{selected.notes||"None provided"}</p></div>{selected.smsLastError&&<p className="inline-note danger-text"><b>Last text error:</b> {selected.smsLastError}</p>}<div className="modal-actions"><select className="role-select" value={selected.status} disabled={busy} onChange={event=>setOrderStatus(selected,event.target.value)}><option value="new">Received</option><option value="confirmed">Approved</option><option value="ready">Ready</option><option value="fulfilled">Completed</option><option value="cancelled">Cancelled</option></select><button className="secondary" disabled={busy||sending} onClick={()=>resendEmail(selected)}>{sending?"Sending…":"Resend email"}</button>{selected.smsConsent&&<button className="secondary" disabled={busy||sending} onClick={()=>resendSms(selected)}><MessageCircle size={16}/>Resend text</button>}<a className="primary" href={`tel:${selected.customerPhone}`}><Phone size={16}/>Call customer</a>{data.user.role==="owner"&&<button className="secondary danger-text" disabled={busy||sending} onClick={()=>remove(selected)}>Delete order</button>}</div></div></div>}
+  </div>;
 }
 
 function CustomOrders({data,act,busy}:{data:Data;act:any;busy:boolean}){

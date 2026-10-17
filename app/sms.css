@@ -1,0 +1,50 @@
+label:has(> input[name="smsConsent"]) {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start;
+  gap: 11px !important;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--cream);
+  cursor: pointer;
+}
+
+label:has(> input[name="smsConsent"]) > input {
+  width: 18px !important;
+  height: 18px !important;
+  margin: 2px 0 0;
+  accent-color: var(--wine);
+  flex: none;
+}
+
+label:has(> input[name="smsConsent"]) > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+label:has(> input[name="smsConsent"]) strong {
+  font-size: 12px;
+  color: var(--ink);
+}
+
+label:has(> input[name="smsConsent"]) small {
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+p:has(> .lucide-message-circle) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: #326347 !important;
+  font-weight: 700 !important;
+}
+
+.status.ready {
+  background: color-mix(in srgb, #658c9b 16%, transparent);
+  color: #4f7482;
+}

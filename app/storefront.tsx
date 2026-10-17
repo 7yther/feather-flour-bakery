@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { ArrowRight, CalendarDays, Check, ChevronDown, Clock3, Feather, MapPin, Minus, PackageCheck, Phone, Plus, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ChevronDown, Clock3, Feather, MapPin, MessageCircle, Minus, PackageCheck, Phone, Plus, ShieldCheck, Sparkles } from "lucide-react";
 import type { StorefrontOffering } from "@/lib/storefront";
 import styles from "./storefront.module.css";
 
@@ -23,6 +23,7 @@ export default function Storefront({ bakery, offerings, markets }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [orderNumber, setOrderNumber] = useState("");
+  const [smsConfirmation, setSmsConfirmation] = useState<"not_requested" | "sent" | "failed">("not_requested");
   const [earliest] = useState(() => localDateTime(new Date(Date.now() + 48 * 60 * 60 * 1000)));
   const totalCookies = Object.values(quantities).reduce((sum, value) => sum + value, 0);
   const estimate = offerings.reduce((sum, item) => sum + (item.priceCents ?? 0) * (quantities[item.id] ?? 0), 0);
@@ -46,7 +47,7 @@ export default function Storefront({ bakery, offerings, markets }: Props) {
     payload.items = offerings.map((item) => ({ offeringId: item.id, quantity: quantities[item.id] || 0 })).filter((item) => item.quantity > 0);
     try {
       const response = await fetch("/api/orders", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
-      const result = await response.json() as { error?: string; orderId?: string; orderNumber?: string; emailEndpoint?: string | null; emailPayload?: Record<string, string> };
+      const result = await response.json() as { error?: string; orderId?: string; orderNumber?: string; smsStatus?: "not_requested" | "sent" | "failed"; emailEndpoint?: string | null; emailPayload?: Record<string, string> };
       if (!response.ok) throw new Error(result.error || "We could not send your order request.");
       if (result.orderId && result.emailEndpoint && result.emailPayload) {
         let emailStatus: "sent" | "pending" | "failed" = "failed";
@@ -60,6 +61,7 @@ export default function Storefront({ bakery, offerings, markets }: Props) {
         await fetch("/api/orders", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ orderId: result.orderId, customerPhone: payload.customerPhone, emailStatus }) }).catch(() => undefined);
       }
       setOrderNumber(result.orderNumber || "received");
+      setSmsConfirmation(result.smsStatus || "not_requested");
       setTimeout(() => document.getElementById("order")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "We could not send your order request.");
@@ -123,11 +125,11 @@ export default function Storefront({ bakery, offerings, markets }: Props) {
         <div className={styles.secureNote}><ShieldCheck/><span>Your details are used only to prepare and contact you about this order.</span></div>
       </div>
       <div className={styles.formCard}>
-        {orderNumber ? <div className={styles.success}><span><Check size={34}/></span><p className={styles.sectionKicker}>Request received</p><h2>Thank you!</h2><p>Your order request <strong>{orderNumber}</strong> has been saved. Feather & Flour will contact you to confirm the details, price, and payment.</p><button className={styles.primary} onClick={() => { setOrderNumber(""); setQuantities({}); }}>Start another order</button></div> :
+        {orderNumber ? <div className={styles.success}><span><Check size={34}/></span><p className={styles.sectionKicker}>Request received</p><h2>Thank you!</h2><p>Your order request <strong>{orderNumber}</strong> has been saved. Feather & Flour will contact you to confirm the details, price, and payment.</p>{smsConfirmation==="sent"&&<p className={styles.smsSuccess}><MessageCircle size={17}/>A confirmation text was sent to your phone.</p>}{smsConfirmation==="failed"&&<p className={styles.smsNotice}>Your order is saved, but the confirmation text could not be delivered. The bakery can still contact you directly.</p>}<button className={styles.primary} onClick={() => { setOrderNumber(""); setQuantities({}); setSmsConfirmation("not_requested"); }}>Start another order</button></div> :
         <form onSubmit={submit}>
           <fieldset><legend><span>1</span>Your cookie selection</legend><div className={styles.selectionList}>{offerings.map((item) => <div key={item.id}><div><strong>{item.name}</strong><small>{(item.priceCents ?? 0) > 0 ? `${money(item.priceCents!)} each` : "Final quote after review"}</small></div><div className={styles.quantity}><button type="button" aria-label={`Remove ${item.name}`} onClick={() => setQuantity(item.id, (quantities[item.id] || 0) - 6)}><Minus/></button><input aria-label={`${item.name} quantity`} type="number" min="0" max="500" value={quantities[item.id] || 0} onChange={(event) => setQuantity(item.id, Number(event.target.value))}/><button type="button" aria-label={`Add ${item.name}`} onClick={() => setQuantity(item.id, (quantities[item.id] || 0) + 6)}><Plus/></button></div></div>)}</div><div className={styles.selectionTotal}><span>{totalCookies} cookie{totalCookies === 1 ? "" : "s"} selected</span>{hasPricedItems && estimate > 0 ? <strong>Estimated {money(estimate)}</strong> : <strong>Pricing confirmed after review</strong>}</div></fieldset>
 
-          <fieldset><legend><span>2</span>Delivery & contact</legend><div className={styles.gridTwo}><label>Full name *<input name="customerName" autoComplete="name" required /></label><label>Phone number *<input name="customerPhone" type="tel" autoComplete="tel" required placeholder="(251) 555-0123" /></label></div><label>Email <input name="customerEmail" type="email" autoComplete="email" placeholder="Optional — for written confirmation" /></label><label>Delivery address *<input name="address1" autoComplete="address-line1" required placeholder="Street address" /></label><label>Apartment, suite, or unit<input name="address2" autoComplete="address-line2" /></label><div className={styles.addressGrid}><label>City *<input name="city" autoComplete="address-level2" required /></label><label>State *<input name="state" autoComplete="address-level1" required defaultValue="AL" /></label><label>ZIP code *<input name="postalCode" autoComplete="postal-code" required /></label></div><label>Requested delivery date & time *<input name="requestedAt" type="datetime-local" min={earliest} defaultValue={earliest} required /></label><label>Allergy concerns<textarea name="allergyNotes" rows={2} placeholder="Tell us about any allergy concerns. We will confirm what we can safely accommodate." /></label><label>Order notes<textarea name="notes" rows={3} placeholder="Delivery instructions, special requests, or questions." /></label><label className={styles.honeypot} aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" /></label></fieldset>
+          <fieldset><legend><span>2</span>Delivery & contact</legend><div className={styles.gridTwo}><label>Full name *<input name="customerName" autoComplete="name" required /></label><label>Phone number *<input name="customerPhone" type="tel" autoComplete="tel" required placeholder="(251) 555-0123" /></label></div><label>Email <input name="customerEmail" type="email" autoComplete="email" placeholder="Optional — for written confirmation" /></label><label className={styles.smsConsent}><input name="smsConsent" type="checkbox" value="yes"/><span><strong>Text me updates about this order</strong><small>By checking this box, you agree to receive transactional texts from Feather & Flour Bakery about this order. Message and data rates may apply. Reply STOP to unsubscribe. Consent is not required to place an order.</small></span></label><label>Delivery address *<input name="address1" autoComplete="address-line1" required placeholder="Street address" /></label><label>Apartment, suite, or unit<input name="address2" autoComplete="address-line2" /></label><div className={styles.addressGrid}><label>City *<input name="city" autoComplete="address-level2" required /></label><label>State *<input name="state" autoComplete="address-level1" required defaultValue="AL" /></label><label>ZIP code *<input name="postalCode" autoComplete="postal-code" required /></label></div><label>Requested delivery date & time *<input name="requestedAt" type="datetime-local" min={earliest} defaultValue={earliest} required /></label><label>Allergy concerns<textarea name="allergyNotes" rows={2} placeholder="Tell us about any allergy concerns. We will confirm what we can safely accommodate." /></label><label>Order notes<textarea name="notes" rows={3} placeholder="Delivery instructions, special requests, or questions." /></label><label className={styles.honeypot} aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" /></label></fieldset>
           {error && <p className={styles.formError}>{error}</p>}
           <button className={styles.submit} disabled={busy || !totalCookies}>{busy ? "Sending your request…" : "Send my cookie request"}<ArrowRight size={19}/></button>
           <p className={styles.submitNote}>This is an order request, not a final booking or payment.</p>

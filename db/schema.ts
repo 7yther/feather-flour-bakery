@@ -52,7 +52,7 @@ export const customOrders = sqliteTable("custom_orders", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
   orderNumber: text("order_number").notNull(),
-  status: text("status", { enum: ["new", "confirmed", "fulfilled", "cancelled"] }).notNull().default("new"),
+  status: text("status", { enum: ["new", "confirmed", "ready", "fulfilled", "cancelled"] }).notNull().default("new"),
   customerName: text("customer_name").notNull(),
   customerEmail: text("customer_email").notNull().default(""),
   customerPhone: text("customer_phone").notNull(),
@@ -69,6 +69,12 @@ export const customOrders = sqliteTable("custom_orders", {
   allergyNotes: text("allergy_notes").notNull().default(""),
   notes: text("notes").notNull().default(""),
   emailStatus: text("email_status", { enum: ["sent", "pending", "failed"] }).notNull().default("pending"),
+  smsConsent: integer("sms_consent", { mode: "boolean" }).notNull().default(false),
+  smsConsentAt: text("sms_consent_at"),
+  smsStatus: text("sms_status", { enum: ["not_requested", "pending", "sent", "delivered", "failed", "opted_out"] }).notNull().default("not_requested"),
+  smsLastKind: text("sms_last_kind", { enum: ["received", "approved", "ready", "completed", "cancelled"] }),
+  smsMessageSid: text("sms_message_sid"),
+  smsLastError: text("sms_last_error").notNull().default(""),
   ...timestamps,
 }, (t) => [uniqueIndex("custom_orders_number").on(t.orderNumber), index("custom_orders_user_date").on(t.userId, t.requestedAt)]);
 

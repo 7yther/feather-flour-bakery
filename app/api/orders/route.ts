@@ -5,6 +5,7 @@ import * as s from "@/db/schema";
 import { getWorkspaceId } from "@/lib/app-auth";
 import { cleanPhone, hasMinimumOrderNotice, MINIMUM_ORDER_NOTICE_HOURS } from "@/lib/order-validation";
 import { DEFAULT_COOKIE_OFFERINGS } from "@/lib/storefront";
+import { sendOrderSms } from "@/lib/twilio";
 
 const clean = (value: unknown, max = 500) => String(value ?? "").trim().slice(0, max);
 const DEFAULTS = new Map(DEFAULT_COOKIE_OFFERINGS.map((item) => [item.id, item]));
@@ -24,6 +25,7 @@ export async function POST(request: Request) {
   const state = clean(body.state, 40);
   const postalCode = clean(body.postalCode, 20);
   const requestedAt = new Date(clean(body.requestedAt, 80));
+  const smsConsent = body.smsConsent === true || clean(body.smsConsent, 20).toLowerCase() === "yes";
   if (!customerName || !customerPhone || !address1 || !city || !state || !postalCode) {
     return Response.json({ error: "Please complete your name, phone number, and delivery address." }, { status: 400 });
   }
@@ -66,7 +68,9 @@ export async function POST(request: Request) {
     customerName, customerEmail, customerPhone, address1, address2, city, state, postalCode,
     requestedAt: requestedAt.toISOString(), occasion: clean(body.occasion, 120), theme: clean(body.theme, 600),
     colors: clean(body.colors, 240), personalization: clean(body.personalization, 600), allergyNotes: clean(body.allergyNotes, 600),
-    notes: clean(body.notes, 1200), emailStatus: "pending" as const, createdAt: stamp, updatedAt: stamp,
+    notes: clean(body.notes, 1200), emailStatus: "pending" as const,
+    smsConsent, smsConsentAt: smsConsent ? stamp : null, smsStatus: smsConsent ? "pending" as const : "not_requested" as const,
+    createdAt: stamp, updatedAt: stamp,
   };
   await db.insert(s.customOrders).values(order);
   for (const item of items) {
@@ -76,6 +80,19 @@ export async function POST(request: Request) {
     });
   }
 
+  let smsStatus: "not_requested" | "sent" | "failed" = "not_requested";
+  if (smsConsent) {
+    const sms = await sendOrderSms(order, "received");
+    smsStatus = sms.status;
+    await db.update(s.customOrders).set({
+      smsStatus: sms.status,
+      smsLastKind: "received",
+      smsMessageSid: sms.messageSid,
+      smsLastError: sms.error,
+      updatedAt: new Date().toISOString(),
+    }).where(eq(s.customOrders.id, orderId));
+  }
+
   const notificationEmail = clean((env as unknown as Record<string, unknown>).ORDER_NOTIFICATION_EMAIL, 160);
   const emailStatus = notificationEmail ? "pending" : "failed";
   if (!notificationEmail) await db.update(s.customOrders).set({ emailStatus, updatedAt: new Date().toISOString() }).where(eq(s.customOrders.id, orderId));
@@ -83,6 +100,7 @@ export async function POST(request: Request) {
     ok: true,
     orderId,
     orderNumber,
+    smsStatus,
     emailStatus,
     emailEndpoint: notificationEmail ? `https://formsubmit.co/ajax/${notificationEmail}` : null,
     emailPayload: {
