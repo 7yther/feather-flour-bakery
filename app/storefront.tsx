@@ -8,7 +8,7 @@ import styles from "./storefront.module.css";
 type Props = {
   bakery: { name: string; serviceArea: string; phone: string };
   offerings: StorefrontOffering[];
-  markets: { id:string; name:string; location:string; eventDate:string; boothNumber:string; photoUrl:string|null }[];
+  markets: { id:string; name:string; location:string; eventDate:string; boothNumber:string; notes:string; photoUrl:string|null }[];
 };
 
 const localDateTime = (date: Date) => {
@@ -112,7 +112,7 @@ export default function Storefront({ bakery, offerings, markets }: Props) {
       <div className={styles.marketHeading}><div><h2>Come see us at an upcoming market.</h2><p>Stop by our booth, say hello, and pick up your favorite fresh-baked cookies.</p></div><CalendarDays size={38}/></div>
       <div className={styles.marketGrid}>{markets.map((market)=><article className={styles.marketCard} key={market.id}>
         <div className={styles.marketImage}>{market.photoUrl?<img src={market.photoUrl} alt={`${market.name} market`} />:<span><Feather size={42}/></span>}</div>
-        <div className={styles.marketDetails}><time dateTime={market.eventDate}>{new Date(`${market.eventDate}T12:00:00`).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}</time><h3>{market.name}</h3><p><MapPin size={17}/><span>{market.location}</span></p>{market.boothNumber&&<strong>Find us at booth {market.boothNumber}</strong>}</div>
+        <div className={styles.marketDetails}><time dateTime={market.eventDate}>{new Date(`${market.eventDate}T12:00:00`).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}</time><h3>{market.name}</h3><a className={styles.marketAddress} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(market.location)}`} target="_blank" rel="noreferrer" aria-label={`Open ${market.location} in Google Maps`}><MapPin size={17}/><span>{market.location}</span></a>{market.boothNumber&&<strong>Find us at booth {market.boothNumber}</strong>}{market.notes&&<p className={styles.marketNote}>{market.notes}</p>}</div>
       </article>)}</div>
     </section>}
 

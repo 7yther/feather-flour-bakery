@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   let bakery = { name: "Feather & Flour Bakery", serviceArea: "Mobile, Alabama", phone: "" };
   let offerings: StorefrontOffering[] = [...DEFAULT_COOKIE_OFFERINGS];
-  let markets: { id:string; name:string; location:string; eventDate:string; boothNumber:string; photoUrl:string|null }[] = [];
+  let markets: { id:string; name:string; location:string; eventDate:string; boothNumber:string; notes:string; photoUrl:string|null }[] = [];
   try {
     const db = getDb();
     const workspaceId = getWorkspaceId();
@@ -31,7 +31,7 @@ export default async function Home() {
       db.select().from(s.settings).where(eq(s.settings.userId, workspaceId)).limit(1),
       db.select({ id: s.products.id, name: s.products.name, description: s.products.description, priceCents: s.products.priceCents, photoKey: s.products.photoKey })
         .from(s.products).where(and(eq(s.products.userId, workspaceId), eq(s.products.active, true))).orderBy(asc(s.products.name)),
-      db.select({ id:s.vendorEvents.id, name:s.vendorEvents.name, location:s.vendorEvents.location, eventDate:s.vendorEvents.eventDate, boothNumber:s.vendorEvents.boothNumber, photoKey:s.vendorEvents.photoKey })
+      db.select({ id:s.vendorEvents.id, name:s.vendorEvents.name, location:s.vendorEvents.location, eventDate:s.vendorEvents.eventDate, boothNumber:s.vendorEvents.boothNumber, notes:s.vendorEvents.notes, photoKey:s.vendorEvents.photoKey })
         .from(s.vendorEvents).where(and(eq(s.vendorEvents.userId, workspaceId), eq(s.vendorEvents.publicVisible, true), gte(s.vendorEvents.eventDate, new Date().toISOString().slice(0,10)))).orderBy(asc(s.vendorEvents.eventDate)),
     ]);
     if (settings[0]) bakery = {
