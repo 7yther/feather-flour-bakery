@@ -4,6 +4,7 @@ import * as s from "@/db/schema";
 import { getAppUser, getWorkspaceId, hashPassword, normalizeUsername, verifyPassword } from "@/lib/app-auth";
 import { calculateSaleTotals, inventoryReversal, recipeUnitCost } from "@/lib/financial";
 import { validateTeamRoleChange } from "@/lib/team-roles";
+import { validateTaxProfileDeletion } from "@/lib/tax-profiles";
 import { smsKindForOrderStatus } from "@/lib/sms";
 import { sendOrderSms } from "@/lib/twilio";
 
@@ -281,6 +282,20 @@ export async function POST(request: Request) {
           if (text(c.name)) queries.push(db.insert(s.taxComponents).values({ id: id(), profileId, name: text(c.name, 80), kind: c.kind || "custom", rateBps, effectiveFrom: c.effectiveFrom || stamp.slice(0, 10), effectiveTo: c.effectiveTo || null, active: c.active !== false, createdAt: stamp, updatedAt: stamp }));
         }
         await (db as any).batch(queries); return Response.json({ ok: true, id: profileId });
+      }
+      case "deleteTaxProfile": {
+        const profileId = text(body.id, 100); if (!profileId) throw new Error("Tax profile is required.");
+        const profile = (await db.select().from(s.taxProfiles).where(and(eq(s.taxProfiles.id, profileId), eq(s.taxProfiles.userId, user.userId))).limit(1))[0];
+        if (!profile) throw new Error("Tax profile not found.");
+        const sales = await db.select({ n: sql<number>`count(*)` }).from(s.sales).where(and(eq(s.sales.userId, user.userId), eq(s.sales.taxProfileId, profileId)));
+        validateTaxProfileDeletion(user.role, Number(sales[0]?.n));
+        await (db as any).batch([
+          db.update(s.settings).set({ defaultTaxProfileId: null, updatedAt: stamp }).where(and(eq(s.settings.userId, user.userId), eq(s.settings.defaultTaxProfileId, profileId))),
+          db.delete(s.taxComponents).where(eq(s.taxComponents.profileId, profileId)),
+          db.delete(s.taxProfiles).where(and(eq(s.taxProfiles.id, profileId), eq(s.taxProfiles.userId, user.userId))),
+          db.insert(s.auditLogs).values({ id: id(), userId: user.userId, action: "delete", entityType: "tax_profile", entityId: profileId, details: JSON.stringify({ name: profile.name }), createdAt: stamp }),
+        ]);
+        return ok();
       }
       case "saveExpenseCategory": {
         const name = text(body.name, 100); if (!name) throw new Error("Category name is required.");

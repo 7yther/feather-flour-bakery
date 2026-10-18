@@ -42,3 +42,24 @@ p:has(> .lucide-message-circle) {
     min-width: 0;
   }
 }
+
+.tax-profile-delete {
+  margin-right: auto;
+}
+
+.tax-profile-history-note {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, #a8565e 24%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, #a8565e 8%, transparent);
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 590px) {
+  .form-modal .tax-profile-delete {
+    margin-right: 0;
+  }
+}
