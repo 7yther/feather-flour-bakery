@@ -287,13 +287,13 @@ export async function POST(request: Request) {
         const profileId = text(body.id, 100); if (!profileId) throw new Error("Tax profile is required.");
         const profile = (await db.select().from(s.taxProfiles).where(and(eq(s.taxProfiles.id, profileId), eq(s.taxProfiles.userId, user.userId))).limit(1))[0];
         if (!profile) throw new Error("Tax profile not found.");
-        const sales = await db.select({ n: sql<number>`count(*)` }).from(s.sales).where(and(eq(s.sales.userId, user.userId), eq(s.sales.taxProfileId, profileId)));
-        validateTaxProfileDeletion(user.role, Number(sales[0]?.n));
+        validateTaxProfileDeletion(user.role);
         await (db as any).batch([
           db.update(s.settings).set({ defaultTaxProfileId: null, updatedAt: stamp }).where(and(eq(s.settings.userId, user.userId), eq(s.settings.defaultTaxProfileId, profileId))),
+          db.update(s.sales).set({ taxProfileId: null, updatedAt: stamp }).where(and(eq(s.sales.userId, user.userId), eq(s.sales.taxProfileId, profileId))),
           db.delete(s.taxComponents).where(eq(s.taxComponents.profileId, profileId)),
           db.delete(s.taxProfiles).where(and(eq(s.taxProfiles.id, profileId), eq(s.taxProfiles.userId, user.userId))),
-          db.insert(s.auditLogs).values({ id: id(), userId: user.userId, action: "delete", entityType: "tax_profile", entityId: profileId, details: JSON.stringify({ name: profile.name }), createdAt: stamp }),
+          db.insert(s.auditLogs).values({ id: id(), userId: user.userId, action: "delete", entityType: "tax_profile", entityId: profileId, details: JSON.stringify({ name: profile.name, historicalTaxPreserved: true }), createdAt: stamp }),
         ]);
         return ok();
       }
