@@ -43,7 +43,7 @@ export default async function CraftsPage() {
 
     <section className={styles.about} id="about"><div><p className={styles.kicker}>A little handmade happiness</p><h2>Crafted with color, care, and personality.</h2></div><p>R & T Crafts n Sweets brings together creative handmade pieces and the joyful spirit behind Feather & Flour. The collections remain separate, so shopping crafts is simple and the bakery stays focused on fresh cookies.</p><a href="/">Visit Feather & Flour Bakery <ArrowRight size={17}/></a></section>
 
-    <section className={styles.contact} id="contact"><div className={styles.contactIntro}><p className={styles.kicker}>Get in touch</p><h2>Have a question about a piece?</h2><p>Send a message through this private form. Your contact details are not displayed publicly.</p></div><ContactForm productNames={products.filter((product) => product.stockQty > 0).map((product) => product.name)}/></section>
+    <section className={styles.contact} id="contact"><div className={styles.contactIntro}><p className={styles.kicker}>Get in touch</p><h2>Have a question, comment, or need assistance? We’d love to hear from you!</h2><p>Simply fill out the contact form below with your name, email address, and message, and we’ll get back to you as soon as possible.</p></div><ContactForm productNames={products.filter((product) => product.stockQty > 0).map((product) => product.name)}/></section>
 
     <footer className={styles.footer}><div className={styles.brand}><img src="/rt-crafts-logo.jpg" alt=""/><span><strong>R & T</strong><small>CRAFTS N SWEETS</small></span></div><p>Handmade in Mobile, Alabama</p><div><a href="/admin">Staff sign in</a></div></footer>
   </main>;
