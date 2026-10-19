@@ -48,6 +48,14 @@ export const products = sqliteTable("products", {
   taxable: integer("taxable", { mode: "boolean" }).notNull().default(true), active: integer("active", { mode: "boolean" }).notNull().default(true), ...timestamps,
 }, (t) => [uniqueIndex("products_user_sku").on(t.userId, t.sku), index("products_user_active").on(t.userId, t.active)]);
 
+export const craftProducts = sqliteTable("craft_products", {
+  id: text("id").primaryKey(), userId: text("user_id").notNull(), name: text("name").notNull(),
+  description: text("description").notNull().default(""), category: text("category").notNull().default("Handmade"),
+  materials: text("materials").notNull().default(""), dimensions: text("dimensions").notNull().default(""),
+  priceCents: integer("price_cents").notNull(), stockQty: integer("stock_qty").notNull().default(1), photoKey: text("photo_key"),
+  active: integer("active", { mode: "boolean" }).notNull().default(true), ...timestamps,
+}, (t) => [index("craft_products_user_active").on(t.userId, t.active), index("craft_products_user_name").on(t.userId, t.name)]);
+
 export const customOrders = sqliteTable("custom_orders", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),

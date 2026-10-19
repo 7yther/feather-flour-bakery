@@ -51,10 +51,11 @@ export async function GET() {
   const { db, user, account } = ctx;
   await bootstrap(user.userId);
   const uid = user.userId;
-  const [appSettings, categories, products, ingredients, recipes, recipeIngredients, taxProfiles, allTaxComponents, sales, allSaleItems, allTaxes, inventory, expenseCategories, expenses, events, eventInventory, audits, customOrders, allCustomOrderItems] = await Promise.all([
+  const [appSettings, categories, products, craftProducts, ingredients, recipes, recipeIngredients, taxProfiles, allTaxComponents, sales, allSaleItems, allTaxes, inventory, expenseCategories, expenses, events, eventInventory, audits, customOrders, allCustomOrderItems] = await Promise.all([
     db.select().from(s.settings).where(eq(s.settings.userId, uid)).limit(1),
     db.select().from(s.productCategories).where(eq(s.productCategories.userId, uid)).orderBy(asc(s.productCategories.name)),
     db.select().from(s.products).where(eq(s.products.userId, uid)).orderBy(desc(s.products.active), asc(s.products.name)),
+    db.select().from(s.craftProducts).where(eq(s.craftProducts.userId, uid)).orderBy(desc(s.craftProducts.active), asc(s.craftProducts.name)),
     db.select().from(s.ingredients).where(eq(s.ingredients.userId, uid)).orderBy(asc(s.ingredients.name)),
     db.select().from(s.recipes).where(eq(s.recipes.userId, uid)).orderBy(asc(s.recipes.name)),
     db.select().from(s.recipeIngredients),
@@ -79,7 +80,7 @@ export async function GET() {
   const customOrderIds = new Set(customOrders.map((x) => x.id));
   const teamUsers=account.role==="owner"?await db.select({id:s.appUsers.id,username:s.appUsers.username,displayName:s.appUsers.displayName,role:s.appUsers.role,active:s.appUsers.active,createdAt:s.appUsers.createdAt}).from(s.appUsers).orderBy(asc(s.appUsers.username)):[];
   return Response.json({
-    user, settings: appSettings[0], categories, products, ingredients, recipes,
+    user, settings: appSettings[0], categories, products, craftProducts, ingredients, recipes,
     recipeIngredients: recipeIngredients.filter((x) => recipeIds.has(x.recipeId)), taxProfiles,
     taxComponents: allTaxComponents.filter((x) => profileIds.has(x.profileId)), sales,
     saleItems: allSaleItems.filter((x) => saleIds.has(x.saleId)), appliedTaxes: allTaxes.filter((x) => saleIds.has(x.saleId)),
@@ -206,6 +207,26 @@ export async function POST(request: Request) {
         if (body.id) await db.update(s.products).set(values).where(and(eq(s.products.id, rowId), eq(s.products.userId, user.userId)));
         else await db.insert(s.products).values({ id: rowId, userId: user.userId, stockQty: whole(body.stockQty), createdAt: stamp, ...values });
         await log(db, user.userId, body.id ? "update" : "create", "product", rowId, { name }); return ok();
+      }
+      case "saveCraftProduct": {
+        const name = text(body.name, 120); if (!name) throw new Error("Craft product name is required.");
+        const priceCents = cents(body.priceCents); if (!priceCents) throw new Error("Enter a selling price greater than zero.");
+        const rowId = body.id || id();
+        const values = { name, description: text(body.description, 1500), category: text(body.category, 80) || "Handmade", materials: text(body.materials, 300), dimensions: text(body.dimensions, 120), priceCents, stockQty: whole(body.stockQty), photoKey: body.photoKey || null, active: body.active !== false, updatedAt: stamp };
+        if (body.id) await db.update(s.craftProducts).set(values).where(and(eq(s.craftProducts.id, rowId), eq(s.craftProducts.userId, user.userId)));
+        else await db.insert(s.craftProducts).values({ id: rowId, userId: user.userId, createdAt: stamp, ...values });
+        await log(db, user.userId, body.id ? "update" : "create", "craft_product", rowId, { name });
+        return ok();
+      }
+      case "deleteCraftProduct": {
+        const rowId = text(body.id, 100);
+        const product = (await db.select({ id: s.craftProducts.id, name: s.craftProducts.name }).from(s.craftProducts).where(and(eq(s.craftProducts.id, rowId), eq(s.craftProducts.userId, user.userId))).limit(1))[0];
+        if (!product) throw new Error("Craft product not found.");
+        await (db as any).batch([
+          db.delete(s.craftProducts).where(and(eq(s.craftProducts.id, rowId), eq(s.craftProducts.userId, user.userId))),
+          db.insert(s.auditLogs).values({ id: id(), userId: user.userId, action: "delete", entityType: "craft_product", entityId: rowId, details: JSON.stringify({ name: product.name }), createdAt: stamp }),
+        ]);
+        return ok();
       }
       case "archiveProduct": {
         await db.update(s.products).set({ active: false, updatedAt: stamp }).where(and(eq(s.products.id, body.id), eq(s.products.userId, user.userId)));

@@ -29,15 +29,18 @@ export async function GET(request: Request) {
   const user = await getAppUser();
   if (!user) {
     const db = getDb();
-    const [publicProduct, publicEvent] = await Promise.all([
+    const [publicProduct, publicEvent, publicCraft] = await Promise.all([
       db.select({ id: s.products.id }).from(s.products).where(and(
         eq(s.products.userId, workspaceId), eq(s.products.active, true), eq(s.products.photoKey, key),
       )).limit(1),
       db.select({ id: s.vendorEvents.id }).from(s.vendorEvents).where(and(
         eq(s.vendorEvents.userId, workspaceId), eq(s.vendorEvents.publicVisible, true), eq(s.vendorEvents.photoKey, key),
       )).limit(1),
+      db.select({ id: s.craftProducts.id }).from(s.craftProducts).where(and(
+        eq(s.craftProducts.userId, workspaceId), eq(s.craftProducts.active, true), eq(s.craftProducts.photoKey, key),
+      )).limit(1),
     ]);
-    if (!publicProduct[0] && !publicEvent[0]) return new Response("Not found", { status: 404 });
+    if (!publicProduct[0] && !publicEvent[0] && !publicCraft[0]) return new Response("Not found", { status: 404 });
   }
   const object = await env.BUCKET.get(key);
   if (!object) return new Response("Not found", { status: 404 });

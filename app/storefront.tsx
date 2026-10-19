@@ -72,7 +72,7 @@ export default function Storefront({ bakery, offerings, markets }: Props) {
         <span className={styles.brandMark}><Feather size={24} /></span>
         <span><strong>Feather <i>&</i> Flour</strong><small>HANDCRAFTED COOKIE STUDIO</small></span>
       </a>
-      <nav aria-label="Storefront navigation"><a href="#cookies">Cookies</a>{markets.length>0&&<a href="#markets">Markets</a>}<a href="#how-it-works">How it works</a><a href="#order" className={styles.navOrder}>Start an order <ArrowRight size={15} /></a></nav>
+      <nav aria-label="Storefront navigation"><a href="#cookies">Cookies</a><a href="/crafts">R & T Crafts</a>{markets.length>0&&<a href="#markets">Markets</a>}<a href="#how-it-works">How it works</a><a href="#order" className={styles.navOrder}>Start an order <ArrowRight size={15} /></a></nav>
     </header>
 
     <section className={styles.hero} id="top">
@@ -92,6 +92,8 @@ export default function Storefront({ bakery, offerings, markets }: Props) {
       </div>
       <a href="#cookies" className={styles.scrollCue}>Explore the menu <ChevronDown size={18}/></a>
     </section>
+
+    <section className={styles.craftsPromo} aria-labelledby="crafts-promo-title"><img src="/rt-crafts-logo.jpg" alt="R & T Crafts n Sweets logo"/><div><p className={styles.sectionKicker}>A sister storefront</p><h2 id="crafts-promo-title">Meet R & T Crafts n Sweets.</h2><p>Browse colorful handmade pieces, see current prices and availability, and ask about the item that catches your eye.</p></div><a href="/crafts">Visit the craft shop <ArrowRight size={18}/></a></section>
 
     <section className={styles.intro} id="cookies">
       <p className={styles.sectionKicker}>Pick your flavors</p>
