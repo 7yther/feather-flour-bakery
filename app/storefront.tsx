@@ -172,6 +172,6 @@ export default function Storefront({ bakery, offerings, markets, feedback }: Pro
       </div>
     </section>
 
-    <footer className={styles.footer}><div className={styles.brand}><span className={styles.brandMark}><Feather size={22}/></span><span><strong>Feather <i>&</i> Flour</strong><small>HANDCRAFTED COOKIE STUDIO</small></span></div><p>{bakery.serviceArea} · Fresh cookies baked to order</p><a href="/admin">Staff sign in</a></footer>
+    <footer className={styles.footer}><div className={styles.brand}><span className={styles.brandMark}><Feather size={22}/></span><span><strong>Feather <i>&</i> Flour</strong><small>HANDCRAFTED COOKIE STUDIO</small></span></div><p>{bakery.serviceArea} · Fresh cookies baked to order</p></footer>
   </main>;
 }
