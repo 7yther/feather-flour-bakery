@@ -95,6 +95,17 @@ export const customOrderItems = sqliteTable("custom_order_items", {
   unitPriceCents: integer("unit_price_cents"),
 }, (t) => [index("custom_order_items_order").on(t.orderId)]);
 
+export const customerFeedback = sqliteTable("customer_feedback", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  customerName: text("customer_name").notNull(),
+  customerEmail: text("customer_email").notNull().default(""),
+  rating: integer("rating").notNull(),
+  message: text("message").notNull(),
+  approved: integer("approved", { mode: "boolean" }).notNull().default(false),
+  ...timestamps,
+}, (t) => [index("customer_feedback_user_approved").on(t.userId, t.approved), index("customer_feedback_user_date").on(t.userId, t.createdAt)]);
+
 export const ingredients = sqliteTable("ingredients", {
   id: text("id").primaryKey(), userId: text("user_id").notNull(), name: text("name").notNull(), purchaseCostCents: integer("purchase_cost_cents").notNull(),
   purchaseQuantityMicros: integer("purchase_quantity_micros").notNull(), unit: text("unit").notNull(), vendor: text("vendor").notNull().default(""), ...timestamps,

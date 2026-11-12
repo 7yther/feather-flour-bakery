@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { ArrowRight, CalendarDays, Check, ChevronDown, Clock3, Feather, MapPin, Minus, PackageCheck, Phone, Plus, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, ChevronDown, Clock3, Feather, MapPin, Minus, PackageCheck, Phone, Plus, Quote, ShieldCheck, Sparkles, Star } from "lucide-react";
 import type { StorefrontOffering } from "@/lib/storefront";
 import styles from "./storefront.module.css";
 
@@ -9,6 +9,7 @@ type Props = {
   bakery: { name: string; serviceArea: string; phone: string };
   offerings: StorefrontOffering[];
   markets: { id:string; name:string; location:string; eventDate:string; boothNumber:string; notes:string; photoUrl:string|null }[];
+  feedback: { id:string; customerName:string; rating:number; message:string; createdAt:string }[];
 };
 
 const localDateTime = (date: Date) => {
@@ -18,7 +19,40 @@ const localDateTime = (date: Date) => {
 
 const money = (cents: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(cents / 100);
 
-export default function Storefront({ bakery, offerings, markets }: Props) {
+function FeedbackSection({ feedback }: { feedback: Props["feedback"] }) {
+  const [rating, setRating] = useState(5);
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+
+  const submitFeedback = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    const form = event.currentTarget;
+    const payload = { ...Object.fromEntries(new FormData(form).entries()), rating };
+    try {
+      const response = await fetch("/api/feedback", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
+      const result = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(result.error || "We could not save your feedback.");
+      form.reset();
+      setRating(5);
+      setSent(true);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "We could not save your feedback.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return <section className={styles.feedback} id="feedback">
+    <div className={styles.feedbackHeading}><div><p className={styles.sectionKicker}>Customer feedback</p><h2>Kind words from our cookie community.</h2><p>We appreciate every customer who takes a moment to share their experience.</p></div><Quote size={48}/></div>
+    {feedback.length > 0 && <div className={styles.feedbackGrid}>{feedback.map((item) => <article className={styles.feedbackCard} key={item.id}><div className={styles.feedbackStars} aria-label={`${item.rating} out of 5 stars`}>{[1,2,3,4,5].map((star) => <Star key={star} fill={star <= item.rating ? "currentColor" : "none"}/>)}</div><blockquote>“{item.message}”</blockquote><p>— {item.customerName}</p></article>)}</div>}
+    <div className={styles.feedbackFormWrap}><div><p className={styles.sectionKicker}>Share your experience</p><h3>How did we do?</h3><p>Your feedback helps Feather & Flour keep making every order better. Approved feedback may be featured above for other customers to see.</p></div>{sent ? <div className={styles.feedbackThanks} role="status"><span><Check size={28}/></span><h3>Thank you!</h3><p>Your feedback was received and will appear here after it is reviewed.</p><button type="button" onClick={() => setSent(false)}>Leave more feedback</button></div> : <form className={styles.feedbackForm} onSubmit={submitFeedback}><div className={styles.gridTwo}><label>Your name *<input name="customerName" autoComplete="name" maxLength={80} required /></label><label>Email address<input name="customerEmail" type="email" autoComplete="email" maxLength={160} placeholder="Optional and never shown publicly" /></label></div><fieldset><legend>Your rating *</legend><div className={styles.ratingPicker}>{[1,2,3,4,5].map((star) => <button type="button" key={star} onClick={() => setRating(star)} aria-label={`${star} star${star === 1 ? "" : "s"}`} aria-pressed={star === rating}><Star fill={star <= rating ? "currentColor" : "none"}/></button>)}</div></fieldset><label>Your feedback *<textarea name="message" rows={5} maxLength={1200} required placeholder="Tell us about your cookies and your experience." /></label><label className={styles.honeypot} aria-hidden="true">Website<input name="website" tabIndex={-1} autoComplete="off" /></label>{error && <p className={styles.formError} role="alert">{error}</p>}<button className={styles.submit} disabled={busy}>{busy ? "Sending feedback…" : "Submit feedback"}<ArrowRight size={18}/></button><p className={styles.submitNote}>If approved, your name, rating, and message may appear publicly. Your email always stays private.</p></form>}</div>
+  </section>;
+}
+
+export default function Storefront({ bakery, offerings, markets, feedback }: Props) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -72,7 +106,7 @@ export default function Storefront({ bakery, offerings, markets }: Props) {
         <span className={styles.brandMark}><Feather size={24} /></span>
         <span><strong>Feather <i>&</i> Flour</strong><small>HANDCRAFTED COOKIE STUDIO</small></span>
       </a>
-      <nav aria-label="Storefront navigation"><a href="#cookies">Cookies</a><a href="/crafts">R & T Crafts</a>{markets.length>0&&<a href="#markets">Markets</a>}<a href="#how-it-works">How it works</a><a href="#order" className={styles.navOrder}>Start an order <ArrowRight size={15} /></a></nav>
+      <nav aria-label="Storefront navigation"><a href="#cookies">Cookies</a><a href="/crafts">R & T Crafts</a>{markets.length>0&&<a href="#markets">Markets</a>}<a href="#feedback">Feedback</a><a href="#how-it-works">How it works</a><a href="#order" className={styles.navOrder}>Start an order <ArrowRight size={15} /></a></nav>
     </header>
 
     <section className={styles.hero} id="top">
@@ -117,6 +151,8 @@ export default function Storefront({ bakery, offerings, markets }: Props) {
         <div className={styles.marketDetails}><time dateTime={market.eventDate}>{new Date(`${market.eventDate}T12:00:00`).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})}</time><h3>{market.name}</h3><a className={styles.marketAddress} href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(market.location)}`} target="_blank" rel="noreferrer" aria-label={`Open ${market.location} in Google Maps`}><MapPin size={17}/><span>{market.location}</span></a>{market.boothNumber&&<strong>Find us at booth {market.boothNumber}</strong>}{market.notes&&<p className={styles.marketNote}>{market.notes}</p>}</div>
       </article>)}</div>
     </section>}
+
+    <FeedbackSection feedback={feedback}/>
 
     <section className={styles.orderSection} id="order">
       <div className={styles.orderAside}>

@@ -51,7 +51,7 @@ export async function GET() {
   const { db, user, account } = ctx;
   await bootstrap(user.userId);
   const uid = user.userId;
-  const [appSettings, categories, products, craftProducts, ingredients, recipes, recipeIngredients, taxProfiles, allTaxComponents, sales, allSaleItems, allTaxes, inventory, expenseCategories, expenses, events, eventInventory, audits, customOrders, allCustomOrderItems] = await Promise.all([
+  const [appSettings, categories, products, craftProducts, ingredients, recipes, recipeIngredients, taxProfiles, allTaxComponents, sales, allSaleItems, allTaxes, inventory, expenseCategories, expenses, events, eventInventory, audits, feedback, customOrders, allCustomOrderItems] = await Promise.all([
     db.select().from(s.settings).where(eq(s.settings.userId, uid)).limit(1),
     db.select().from(s.productCategories).where(eq(s.productCategories.userId, uid)).orderBy(asc(s.productCategories.name)),
     db.select().from(s.products).where(eq(s.products.userId, uid)).orderBy(desc(s.products.active), asc(s.products.name)),
@@ -70,6 +70,7 @@ export async function GET() {
     db.select().from(s.vendorEvents).where(eq(s.vendorEvents.userId, uid)).orderBy(desc(s.vendorEvents.eventDate)),
     db.select().from(s.eventInventory),
     db.select().from(s.auditLogs).where(eq(s.auditLogs.userId, uid)).orderBy(desc(s.auditLogs.createdAt)).limit(100),
+    db.select().from(s.customerFeedback).where(eq(s.customerFeedback.userId, uid)).orderBy(desc(s.customerFeedback.createdAt)).limit(500),
     db.select().from(s.customOrders).where(eq(s.customOrders.userId, uid)).orderBy(desc(s.customOrders.createdAt)).limit(500),
     db.select().from(s.customOrderItems),
   ]);
@@ -84,7 +85,7 @@ export async function GET() {
     recipeIngredients: recipeIngredients.filter((x) => recipeIds.has(x.recipeId)), taxProfiles,
     taxComponents: allTaxComponents.filter((x) => profileIds.has(x.profileId)), sales,
     saleItems: allSaleItems.filter((x) => saleIds.has(x.saleId)), appliedTaxes: allTaxes.filter((x) => saleIds.has(x.saleId)),
-    inventory, expenseCategories, expenses, events, eventInventory: eventInventory.filter((x) => eventIds.has(x.eventId)), audits, teamUsers,
+    inventory, expenseCategories, expenses, events, eventInventory: eventInventory.filter((x) => eventIds.has(x.eventId)), audits, feedback, teamUsers,
     customOrders, customOrderItems: allCustomOrderItems.filter((x) => customOrderIds.has(x.orderId)),
   });
 }
@@ -226,6 +227,23 @@ export async function POST(request: Request) {
           db.delete(s.craftProducts).where(and(eq(s.craftProducts.id, rowId), eq(s.craftProducts.userId, user.userId))),
           db.insert(s.auditLogs).values({ id: id(), userId: user.userId, action: "delete", entityType: "craft_product", entityId: rowId, details: JSON.stringify({ name: product.name }), createdAt: stamp }),
         ]);
+        return ok();
+      }
+      case "setFeedbackApproved": {
+        const rowId = text(body.id, 100);
+        const existing = await db.select({ id: s.customerFeedback.id }).from(s.customerFeedback).where(and(eq(s.customerFeedback.id, rowId), eq(s.customerFeedback.userId, user.userId))).limit(1);
+        if (!existing[0]) throw new Error("Feedback not found.");
+        const approved = body.approved === true;
+        await db.update(s.customerFeedback).set({ approved, updatedAt: stamp }).where(and(eq(s.customerFeedback.id, rowId), eq(s.customerFeedback.userId, user.userId)));
+        await log(db, user.userId, approved ? "approve" : "hide", "customer_feedback", rowId, {});
+        return ok();
+      }
+      case "deleteFeedback": {
+        const rowId = text(body.id, 100);
+        const existing = await db.select({ id: s.customerFeedback.id, customerName: s.customerFeedback.customerName }).from(s.customerFeedback).where(and(eq(s.customerFeedback.id, rowId), eq(s.customerFeedback.userId, user.userId))).limit(1);
+        if (!existing[0]) throw new Error("Feedback not found.");
+        await db.delete(s.customerFeedback).where(and(eq(s.customerFeedback.id, rowId), eq(s.customerFeedback.userId, user.userId)));
+        await log(db, user.userId, "delete", "customer_feedback", rowId, { customerName: existing[0].customerName });
         return ok();
       }
       case "archiveProduct": {
