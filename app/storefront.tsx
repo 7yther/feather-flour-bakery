@@ -130,7 +130,7 @@ export default function Storefront({ bakery, offerings, markets, feedback }: Pro
       <p className={styles.sectionKicker}>Pick your flavors</p>
       <div className={styles.sectionHeading}><h2>There’s a cookie for every craving.</h2><p>Mix and match the flavors you want, enter the quantity for each one, and send your order request. We’ll contact you to confirm availability, price, and payment.</p></div>
       <div className={styles.offerGrid}>{offerings.map((item, index) => <article className={styles.offerCard} key={item.id}>
-        <div className={`${styles.offerVisual} ${item.photoUrl ? styles.hasPhoto : styles[item.accent || "rose"]}`}>{item.photoUrl ? <img className={styles.offerPhoto} src={item.photoUrl} alt={`${item.name} cookie`} /> : <span className={styles.miniCookie}>{index % 3 === 0 ? "✦" : index % 3 === 1 ? "F&F" : "♡"}</span>}<small>0{index + 1}</small></div>
+        <div className={`${styles.offerVisual} ${item.photoUrl ? styles.hasPhoto : styles[item.accent || "rose"]}`}>{item.photoUrl ? <img className={styles.offerPhoto} src={item.photoUrl} alt={`${item.name} cookie`} /> : <span className={styles.miniCookie}>{index % 3 === 0 ? "✦" : index % 3 === 1 ? "F&F" : "♡"}</span>}</div>
         <div className={styles.offerContent}><h3>{item.name}</h3><p>{item.description}</p><div><span>{(item.priceCents ?? 0) > 0 ? `${money(item.priceCents!)} each` : "Price confirmed after review"}</span><button type="button" onClick={() => choose(item.id)}>Choose this flavor <ArrowRight size={15}/></button></div></div>
       </article>)}</div>
     </section>
