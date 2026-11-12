@@ -61,6 +61,7 @@ export default function Storefront({ bakery, offerings, markets, feedback }: Pro
   const totalCookies = Object.values(quantities).reduce((sum, value) => sum + value, 0);
   const estimate = offerings.reduce((sum, item) => sum + (item.priceCents ?? 0) * (quantities[item.id] ?? 0), 0);
   const hasPricedItems = offerings.some((item) => (item.priceCents ?? 0) > 0);
+  const heroCookies = offerings.filter((item) => item.photoUrl).slice(0, 3);
 
   const setQuantity = (id: string, value: number) => setQuantities((current) => ({ ...current, [id]: Math.max(0, Math.min(500, Math.floor(value || 0))) }));
   const choose = (id: string) => {
@@ -117,12 +118,10 @@ export default function Storefront({ bakery, offerings, markets, feedback }: Pro
         <div className={styles.heroActions}><a href="#order" className={styles.primary}>Build your cookie order <ArrowRight size={18} /></a><span><Clock3 size={18} /> 48-hour minimum notice</span></div>
         <div className={styles.heroProof}><span><Check /> Baked to order</span><span><Check /> {offerings.length} cookie flavors</span><span><Check /> Personal service</span></div>
       </div>
-      <div className={styles.cookieScene} aria-label="Decorated cookie assortment">
-        <div className={`${styles.cookieArt} ${styles.cookieOne}`}><span>yum</span></div>
-        <div className={`${styles.cookieArt} ${styles.cookieTwo}`}><i/><i/><i/><i/><i/></div>
-        <div className={`${styles.cookieArt} ${styles.cookieThree}`}><Feather size={45}/></div>
-        <div className={styles.flourDust}/>
-        <p><strong>Small-batch.</strong><br/>Big-celebration energy.</p>
+      <div className={styles.cookieShowcase} aria-label="Featured Feather & Flour cookies">
+        <div className={styles.showcaseBadge}><Sparkles size={15}/> Fresh from the Feather & Flour menu</div>
+        {heroCookies.length ? <div className={styles.showcasePhotos}>{heroCookies.map((cookie) => <figure className={styles.featuredPhoto} key={cookie.id}><img src={cookie.photoUrl!} alt={`${cookie.name} cookie`}/><figcaption>{cookie.name}</figcaption></figure>)}</div> : <div className={styles.showcaseFallback}><span><Feather size={44}/></span><strong>Fresh cookie photos coming soon.</strong><p>Add product photos in the management dashboard and they’ll appear here automatically.</p></div>}
+        <div className={styles.showcaseNote}><strong>Baked fresh.</strong><span>Packed with flavor.</span></div>
       </div>
       <a href="#cookies" className={styles.scrollCue}>Explore the menu <ChevronDown size={18}/></a>
     </section>
