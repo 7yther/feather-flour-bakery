@@ -126,8 +126,6 @@ export default function Storefront({ bakery, offerings, markets, feedback }: Pro
       <a href="#cookies" className={styles.scrollCue}>Explore the menu <ChevronDown size={18}/></a>
     </section>
 
-    <section className={styles.craftsPromo} aria-labelledby="crafts-promo-title"><img src="/rt-crafts-logo.jpg" alt="R & T Crafts n Sweets logo"/><div><p className={styles.sectionKicker}>A sister storefront</p><h2 id="crafts-promo-title">Meet R & T Crafts n Sweets.</h2><p>Browse colorful handmade pieces, see current prices and availability, and ask about the item that catches your eye.</p></div><a href="/crafts">Visit the craft shop <ArrowRight size={18}/></a></section>
-
     <section className={styles.intro} id="cookies">
       <p className={styles.sectionKicker}>Pick your flavors</p>
       <div className={styles.sectionHeading}><h2>There’s a cookie for every craving.</h2><p>Mix and match the flavors you want, enter the quantity for each one, and send your order request. We’ll contact you to confirm availability, price, and payment.</p></div>
@@ -171,6 +169,8 @@ export default function Storefront({ bakery, offerings, markets, feedback }: Pro
         </form>}
       </div>
     </section>
+
+    <section className={styles.craftsPromo} aria-labelledby="crafts-promo-title"><img src="/rt-crafts-logo.jpg" alt="R & T Crafts n Sweets logo"/><div><p className={styles.sectionKicker}>A sister storefront</p><h2 id="crafts-promo-title">Meet R & T Crafts n Sweets.</h2><p>Browse colorful handmade pieces, see current prices and availability, and ask about the item that catches your eye.</p></div><a href="/crafts">Visit the craft shop <ArrowRight size={18}/></a></section>
 
     <footer className={styles.footer}><div className={styles.brand}><span className={styles.brandMark}><Feather size={22}/></span><span><strong>Feather <i>&</i> Flour</strong><small>HANDCRAFTED COOKIE STUDIO</small></span></div><p>{bakery.serviceArea} · Fresh cookies baked to order</p></footer>
   </main>;
